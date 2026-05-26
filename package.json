@@ -1,0 +1,37 @@
+{
+  "name": "kinloop",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "next dev -H 0.0.0.0",
+    "build": "next build",
+    "start": "next start",
+    "check": "npm run check:docs && npm run check:ui-copy && npm run test && npm run build",
+    "check:docs": "node scripts/check-docs.mjs",
+    "check:ui-copy": "node scripts/check-ui-copy.mjs",
+    "check:browser": "playwright test",
+    "browser:install": "playwright install chromium",
+    "check:codex-live": "node scripts/check-codex-live.mjs",
+    "check:agentmail-live": "node scripts/check-agentmail-live.mjs",
+    "check:supabase-user": "node scripts/check-supabase-auth-user.mjs",
+    "check:supabase-live": "node scripts/check-supabase-live.mjs",
+    "check:supabase-live-records": "node scripts/check-supabase-live-records.mjs",
+    "check:openclaw-live": "node scripts/check-openclaw-live.mjs",
+    "mcp:context": "node scripts/mcp-context-server.mjs",
+    "reset:supabase-live": "node scripts/reset-supabase-live.mjs",
+    "reset:local-state-instructions": "node scripts/reset-local-state.mjs",
+    "test": "node --test tests/*.test.mjs"
+  },
+  "dependencies": {
+    "@openai/codex-sdk": "^0.133.0",
+    "@supabase/supabase-js": "^2.106.2",
+    "next": "16.2.6",
+    "react": "latest",
+    "react-dom": "latest",
+    "zod": "^4.4.3"
+  },
+  "devDependencies": {
+    "@playwright/test": "^1.60.0"
+  }
+}

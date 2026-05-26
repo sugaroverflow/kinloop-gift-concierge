@@ -1,0 +1,21 @@
+-- Demo seed placeholder.
+-- Apply after creating a Supabase auth user, then replace the value below.
+
+-- \set kinloop_user_id '00000000-0000-0000-0000-000000000000'
+
+-- insert into public.people (
+--   user_id, slug, name, relation, birthday, budget_min, budget_max,
+--   address_status, notes, likes, avoid
+-- ) values (
+--   :'kinloop_user_id',
+--   'sarah',
+--   'Sarah Chen',
+--   'Close friend',
+--   '2026-06-02',
+--   40,
+--   75,
+--   'ready',
+--   'Thoughtful and useful, but not extravagant.',
+--   array['Pottery classes', 'Espresso', 'Cozy hosting'],
+--   array['Generic mugs', 'Fitness gifts']
+-- );

@@ -1,0 +1,43 @@
+services:
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile.dev
+    working_dir: /workspace
+    volumes:
+      - .:/workspace
+      - ${HOME}/.codex:/root/.codex
+      - node_modules:/workspace/node_modules
+      - npm_cache:/workspace/.cache/npm
+    ports:
+      - "3000:3000"
+    environment:
+      CI: "true"
+      NEXT_TELEMETRY_DISABLED: "1"
+      NEXT_PUBLIC_KINLOOP_MODE: "${NEXT_PUBLIC_KINLOOP_MODE:-local}"
+      NEXT_PUBLIC_SUPABASE_URL: "${NEXT_PUBLIC_SUPABASE_URL:-}"
+      NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY: "${NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY:-}"
+      NEXT_PUBLIC_SUPABASE_ANON_KEY: "${NEXT_PUBLIC_SUPABASE_ANON_KEY:-}"
+      OPENAI_API_KEY: "${OPENAI_API_KEY:-}"
+      CODEX_API_KEY: "${CODEX_API_KEY:-}"
+      CODEX_LIVE: "${CODEX_LIVE:-0}"
+      CODEX_USE_CLI_AUTH: "${CODEX_USE_CLI_AUTH:-0}"
+      CODEX_GIFT_SOURCE_TIMEOUT_MS: "${CODEX_GIFT_SOURCE_TIMEOUT_MS:-15000}"
+      OPENCLAW_MODE: "${OPENCLAW_MODE:-preview}"
+      OPENCLAW_TARGET_ALLOWLIST: "${OPENCLAW_TARGET_ALLOWLIST:-}"
+      OPENCLAW_REVIEW_BASE_URL: "${OPENCLAW_REVIEW_BASE_URL:-http://localhost:3000}"
+      OPENCLAW_CLI_EXECUTE: "${OPENCLAW_CLI_EXECUTE:-0}"
+      OPENCLAW_TEST_TARGET: "${OPENCLAW_TEST_TARGET:-}"
+      OPENCLAW_CHECK_VOICE: "${OPENCLAW_CHECK_VOICE:-0}"
+      SUPABASE_TEST_EMAIL: "${SUPABASE_TEST_EMAIL:-}"
+      SUPABASE_TEST_PASSWORD: "${SUPABASE_TEST_PASSWORD:-}"
+      SUPABASE_OTHER_EMAIL: "${SUPABASE_OTHER_EMAIL:-}"
+      SUPABASE_OTHER_PASSWORD: "${SUPABASE_OTHER_PASSWORD:-}"
+      SUPABASE_LIVE_WRITE: "${SUPABASE_LIVE_WRITE:-0}"
+      SUPABASE_TEST_BRIEF_ID: "${SUPABASE_TEST_BRIEF_ID:-}"
+      SUPABASE_TEST_GIFT_OPTION_ID: "${SUPABASE_TEST_GIFT_OPTION_ID:-}"
+    command: bash
+
+volumes:
+  node_modules:
+  npm_cache:

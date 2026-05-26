@@ -1,0 +1,68 @@
+[
+  {
+    "id": "pottery-voucher",
+    "name": "Pottery Studio Voucher",
+    "caption": "A flexible class pass for a local ceramics studio.",
+    "price": 58,
+    "displayPrice": "GBP 58.00",
+    "delivery": "Digital delivery today",
+    "seller": "Clay North Studio",
+    "returns": "Flexible booking",
+    "match": "Best match",
+    "score": 89,
+    "photo": "https://images.pexels.com/photos/18267464/pexels-photo-18267464.jpeg?auto=compress&cs=tinysrgb&w=900&h=720&fit=crop",
+    "why": "Sarah mentioned pottery twice and the digital pass avoids shipping pressure.",
+    "consider": "Less tactile than a wrapped item.",
+    "basedOn": ["Pottery note", "Birthday date", "Past gift history"],
+    "catalog": {
+      "sku": "CLAY-NORTH-CLASS-PASS",
+      "category": "Experiences",
+      "inventoryStatus": "Available",
+      "merchantRating": 4.8
+    }
+  },
+  {
+    "id": "espresso-kit",
+    "name": "Espresso Tasting Kit",
+    "caption": "A boxed tasting set with small-batch beans and brew notes.",
+    "price": 64,
+    "displayPrice": "GBP 64.00",
+    "delivery": "Arrives by May 30",
+    "seller": "Tarra Coffee Co.",
+    "returns": "30-day returns",
+    "match": "Saved pick",
+    "score": 82,
+    "photo": "https://images.pexels.com/photos/1695052/pexels-photo-1695052.jpeg?auto=compress&cs=tinysrgb&w=900&h=720&fit=crop",
+    "why": "Fits espresso and hosting signals, with delivery inside the birthday window.",
+    "consider": "May overlap with something she already buys.",
+    "basedOn": ["Coffee note", "Hosting note"],
+    "catalog": {
+      "sku": "TARRA-ESPRESSO-TASTING-6",
+      "category": "Coffee",
+      "inventoryStatus": "Available",
+      "merchantRating": 4.7
+    }
+  },
+  {
+    "id": "hosting-care",
+    "name": "Cozy Hosting Bundle",
+    "caption": "A warm table-setting bundle for relaxed dinner hosting.",
+    "price": 46,
+    "displayPrice": "GBP 46.00",
+    "delivery": "Arrives by May 31",
+    "seller": "Hearth & Table",
+    "returns": "Returns accepted",
+    "match": "Backup idea",
+    "score": 74,
+    "photo": "https://images.pexels.com/photos/6148455/pexels-photo-6148455.jpeg?auto=compress&cs=tinysrgb&w=900&h=720&fit=crop",
+    "why": "Connects to cozy hosting without making sensitive assumptions.",
+    "consider": "Could feel a little generic.",
+    "basedOn": ["Hosting note", "Table setting"],
+    "catalog": {
+      "sku": "HEARTH-TABLE-HOSTING-SET",
+      "category": "Home",
+      "inventoryStatus": "Available",
+      "merchantRating": 4.6
+    }
+  }
+]
