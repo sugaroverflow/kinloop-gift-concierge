@@ -1,37 +1,33 @@
 # Kinloop
 
-Kinloop is a Codex-powered gift approval cockpit.
+Kinloop is a source-driven gift concierge.
 
-```txt
-Automate the gift search. Keep the human in the loop.
-```
-
-The app gives an agent-owned inbox to gift hints, imports the latest relationship signal from `kinloop-agent@agentmail.to`, searches a Shopify UCP Catalog MCP product source with a mock retailer feed fallback, asks Codex to convert that messy signal into structured gift options, and records the human approval.
+It helps a user import relationship context, discover upcoming birthdays, reveal gift ideas from a product source, approve one idea, and opt into a reminder call before the decision deadline. The app surface is consumer-facing; the technical architecture is visible in the code and docs.
 
 ## What It Proves
 
 | Requirement | Kinloop path |
 |---|---|
-| Working application | One complete Sarah birthday flow from signal import to approval |
-| Login / authorization | Supabase auth surface and repository integration |
-| Data persistence | Supabase product memory with local resilience for recording continuity |
+| Working application | One focused flow from source import to gift approval and reminder opt-in |
+| Login / authorization | Supabase auth surface with local fallback for recording continuity |
+| Data persistence | Supabase product memory plus browser state fallback |
 | Meaningful tests | Docs guard, UI copy guard, unit/integration tests, build, and browser smoke |
-| Programmatic Codex | `@openai/codex-sdk` powers `/api/codex/gift-source` |
-| Product source | Shopify UCP Catalog MCP when configured, mock retailer feed fallback for tests and recording continuity |
-| Creativity | AgentMail inbox plus Codex Signal Studio creates a real signal-to-decision pipeline |
+| Programmatic Codex | `@openai/codex-sdk` powers structured gift idea generation |
+| Product source | Shopify UCP Catalog MCP when configured, mock retailer feed fallback for deterministic runs |
+| Creativity | Relationship-source import plus product-feed-backed gift reveal |
 | Communication | `docs/recording-script.md` gives the five-minute recording structure |
 
 ## Product Flow
 
 ```txt
 Open Kinloop
-  -> review Sarah's birthday countdown
-  -> import the latest AgentMail hint
-  -> inspect the extracted relationship signal
-  -> run Codex Signal Studio
-  -> compare three approval-ready gifts
-  -> approve one gift
-  -> inspect the audit trail
+  -> sign in or continue locally
+  -> import connected sources
+  -> review discovered people and birthdays
+  -> edit essentials
+  -> reveal gift ideas
+  -> approve one idea
+  -> opt into a reminder call
 ```
 
 ## Boundaries
@@ -86,37 +82,21 @@ Verify:
 scripts/container-run.sh npm run check:codex-live
 ```
 
-Scoped-key alternative:
+## Source And Product Paths
+
+The checked-in sample source bundle is safe synthetic data for repeatable demos. Live source and product integrations are optional and credentialed.
 
 ```txt
-CODEX_API_KEY=sk-...
-CODEX_LIVE=1
-scripts/container-run.sh npm run check:codex-live
-```
-
-## AgentMail Path
-
-Put this in `.env.local`:
-
-```txt
-AGENTMAIL_API_KEY=am_...
+AGENTMAIL_API_KEY=...
 AGENTMAIL_INBOX_ID=kinloop-agent@agentmail.to
-AGENTMAIL_INCLUDE_UNAUTHENTICATED=0
+SHOPIFY_UCP_MCP_ENDPOINT=https://catalog.shopify.com/api/ucp/mcp
 ```
 
-Verify:
+Useful checks:
 
 ```txt
 scripts/container-run.sh npm run check:agentmail-live
-```
-
-## Optional Live Checks
-
-Run these only when matching credentials, consent, and allowlists are configured.
-
-```txt
 scripts/container-run.sh npm run check:supabase-live
-scripts/container-run.sh npm run check:supabase-live-records
 scripts/container-run.sh npm run check:openclaw-live
 ```
 

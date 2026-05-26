@@ -7,37 +7,34 @@ Split the video into two sections: product first, then how it was built with Cod
 Say:
 
 ```txt
-Kinloop gives an AI agent its own inbox for gift hints. It imports messy relationship context, asks Codex to turn it into structured gift options, and keeps the final approval human.
+Kinloop is a gift concierge that automates everything except the human decision. It imports relationship context, finds upcoming birthdays, reveals product-feed-backed gift ideas, and lets me approve one before the deadline.
 ```
 
 Show:
 
-- Sarah's birthday countdown.
-- `kinloop-agent@agentmail.to` as the signal intake point.
-- The approval boundary: the app prepares a gift decision; the user approves.
+- The Kinloop home screen.
+- Connected source import.
+- The top-priority birthday.
+- The approval and reminder path.
 
 ## 0:25-2:35 Product Walkthrough
 
 Show:
 
 1. Open Kinloop.
-2. Show Sarah's birthday context, preferences, avoid list, budget, and deadline.
-3. Click `Import latest hint`.
-4. Show the imported AgentMail subject, sender, extracted gift lead, interests, avoid list, budget, and delivery signal.
-5. Click `Run Codex gift scan`.
-6. Narrate Codex Signal Studio:
-   - signal input
-   - runtime trace
-   - structured gift options
-   - guardrails and human approval
-7. Compare the three gift options.
-8. Approve one gift.
-9. Show the audit trail: signal imported, Codex generated options, gift approved.
+2. Sign in or point out the current-device fallback.
+3. Click `Import connected sources`.
+4. Show discovered people and upcoming birthdays.
+5. Select Sarah and edit one essential field.
+6. Click `Reveal gift ideas`.
+7. Compare the three gift ideas.
+8. Approve one idea.
+9. Enable `Call me 3 days before`.
 
 Say:
 
 ```txt
-The important part is not that Codex writes copy. Codex is a bounded runtime capability inside the product, producing structured decision objects from real-world messy input.
+The app surface is intentionally not a demo console. The product is about one clear user job: never miss the moment to choose a thoughtful gift.
 ```
 
 ## 2:35-4:25 How I Built This With Codex
@@ -46,12 +43,13 @@ Cover the engineering story:
 
 - Used Codex to narrow the scope into one complete product pipeline.
 - Used `@openai/codex-sdk` programmatically in the app.
-- Added AgentMail intake so the product can read a real agent-owned inbox.
-- Kept deterministic signal normalization around the AI call for reliability.
-- Constrained Codex output to structured gift option fields.
+- Added a source intake path with an agent-owned inbox and a checked-in synthetic bundle for reliable recording.
+- Added Shopify UCP Catalog MCP product discovery with a mock retailer feed fallback.
+- Kept deterministic normalization around the AI call for reliability.
+- Constrained Codex output to structured gift idea fields.
 - Kept high-impact actions out of scope: no purchase, no payment, no fulfillment, no unattended send.
 - Used Supabase for auth and product memory when configured.
-- Used tests for parser behavior, API routes, persistence boundaries, UI copy, build, and browser smoke.
+- Used tests for parser behavior, API routes, product source, persistence boundaries, UI copy, build, and browser smoke.
 
 Optional line:
 
@@ -63,13 +61,13 @@ The Codexmaxxing angle is that Codex helped build the app, and Codex is also a c
 
 Close with:
 
-- Built: working app, login path, AgentMail intake route, Codex Signal Studio, approval flow, tests.
-- Demonstrated: real inbox-shaped signal import and structured Codex output inside a commerce workflow.
-- Safe by design: human approval, audit trail, no payment, no purchase, no fulfillment.
+- Built: working app, login path, source import, product-backed gift reveal, approval flow, reminder preference, tests.
+- Demonstrated: source-derived gift context and structured Codex output inside a commerce-adjacent workflow.
+- Safe by design: user approval, no payment, no purchase, no fulfillment.
 - Optional next edge: OpenClaw reminder delivery or voice confirmation once the allowlisted channel path is verified.
 
 End on:
 
 ```txt
-Kinloop shows how Codex can become a product workflow primitive: it turns messy external context into governed, auditable decisions.
+Kinloop shows how Codex can become a product workflow primitive: it turns messy external context into governed, useful decisions.
 ```

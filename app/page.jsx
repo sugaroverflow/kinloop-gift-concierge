@@ -1,38 +1,43 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
+import sourceBundle from "../data/kinloop/agentmail-inbox-sample.json";
 import { gifts, recipients } from "../lib/product-data";
-import {
-  createAuditEvent,
-  initialKinloopState,
-  loadKinloopState,
-  saveKinloopState
-} from "../lib/persistence";
+import { initialKinloopState, loadKinloopState, saveKinloopState } from "../lib/persistence";
 import { getBrowserSupabaseClient } from "../lib/supabase/client";
-import { recordKinloopApproval, recordKinloopAuditEvent } from "../lib/supabase/repository";
+import { recordKinloopApproval } from "../lib/supabase/repository";
 
-const sarah = recipients.find((person) => person.id === "sarah") || recipients[0];
+const dueSoonest = (left, right) => timingDays(left.timing) - timingDays(right.timing);
 
-export default function KinloopCockpit() {
+export default function KinloopApp() {
   const [state, setState] = useState(initialKinloopState);
   const [hasLoaded, setHasLoaded] = useState(false);
   const [session, setSession] = useState(null);
   const [authOpen, setAuthOpen] = useState(false);
   const [authForm, setAuthForm] = useState({ email: "", password: "" });
   const [authError, setAuthError] = useState("");
-  const [sourceText, setSourceText] = useState("");
-  const [signalStatus, setSignalStatus] = useState("idle");
-  const [signalError, setSignalError] = useState("");
-  const [matchingStatus, setMatchingStatus] = useState("idle");
-  const [matchingError, setMatchingError] = useState("");
+  const [people, setPeople] = useState([]);
+  const [selectedId, setSelectedId] = useState("");
+  const [sourceStatus, setSourceStatus] = useState("idle");
+  const [giftStatus, setGiftStatus] = useState("idle");
+  const [giftError, setGiftError] = useState("");
+  const [giftIdeas, setGiftIdeas] = useState([]);
+  const [reminderEnabled, setReminderEnabled] = useState(false);
   const [toast, setToast] = useState("");
 
-  const options = state.codexRun.options.length ? state.codexRun.options : gifts.slice(0, 3).map(giftToOption);
-  const approvedOption = options.find((option) => option.id === state.approval?.giftId);
-  const workflowState = state.approval ? "approved" : state.codexRun.status === "complete" ? "ready" : state.signal ? "signal" : "waiting";
+  const selectedPerson = useMemo(
+    () => people.find((person) => person.id === selectedId) || people[0] || null,
+    [people, selectedId]
+  );
+  const priorityPerson = useMemo(() => [...people].sort(dueSoonest)[0] || null, [people]);
+  const approvedIdea = giftIdeas.find((idea) => idea.id === state.approval?.giftId);
 
   useEffect(() => {
-    setState(loadKinloopState());
+    const loaded = loadKinloopState();
+    setState(loaded);
+    setReminderEnabled(Boolean(loaded.reminderEnabled));
+    setPeople(Array.isArray(loaded.discoveredPeople) ? loaded.discoveredPeople : []);
+    setSelectedId(loaded.selectedPersonId || "");
     setHasLoaded(true);
 
     const client = getBrowserSupabaseClient();
@@ -47,125 +52,90 @@ export default function KinloopCockpit() {
   }, []);
 
   useEffect(() => {
-    if (hasLoaded) saveKinloopState(state);
-  }, [state, hasLoaded]);
-
-  function updateState(updater) {
-    setState((current) => typeof updater === "function" ? updater(current) : updater);
-  }
+    if (!hasLoaded) return;
+    saveKinloopState({
+      ...state,
+      reminderEnabled,
+      discoveredPeople: people,
+      selectedPersonId: selectedId
+    });
+  }, [state, reminderEnabled, people, selectedId, hasLoaded]);
 
   function showToast(message) {
     setToast(message);
-    window.setTimeout(() => setToast(""), 2400);
+    window.setTimeout(() => setToast(""), 2200);
   }
 
-  async function importAgentMailHint() {
-    setSignalStatus("loading");
-    setSignalError("");
-
-    try {
-      const response = await fetch("/api/signals/agentmail", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" }
-      });
-      const payload = await response.json();
-      if (!response.ok || !payload.ok) throw new Error(payload.error || "Agent inbox is not connected.");
-
-      updateState((current) => ({
-        ...current,
-        signal: payload.signal,
-        auditEvents: [
-          createAuditEvent("Signal imported", payload.signal.subject || "Latest AgentMail hint", "agentmail"),
-          ...current.auditEvents
-        ]
-      }));
-      setSourceText(payload.sourceText);
-      recordKinloopAuditEvent({
-        client: getBrowserSupabaseClient(),
-        eventType: "signal_imported",
-        summary: payload.signal.subject || "Latest AgentMail hint imported",
-        metadata: {
-          source: payload.signal.source,
-          subject: payload.signal.subject,
-          from: payload.signal.from,
-          extracted: payload.signal.extracted
-        }
-      }).catch(() => {});
-      showToast("Latest hint imported.");
-    } catch (error) {
-      setSignalError(error instanceof Error ? error.message : "Agent inbox is not connected.");
-    } finally {
-      setSignalStatus("idle");
-    }
+  function importSources() {
+    setSourceStatus("loading");
+    window.setTimeout(() => {
+      const discovered = buildDiscoveredPeople();
+      setPeople(discovered);
+      setSelectedId((current) => current || discovered[0]?.id || "");
+      setGiftIdeas([]);
+      setSourceStatus("ready");
+      showToast(`${discovered.length} people found.`);
+    }, 240);
   }
 
-  async function runCodexScan() {
-    setMatchingStatus("loading");
-    setMatchingError("");
+  function updatePerson(field, value) {
+    setPeople((current) => current.map((person) => (
+      person.id === selectedPerson?.id ? { ...person, [field]: value } : person
+    )));
+  }
 
-    if (!state.signal) {
-      setMatchingError("Import the latest gift hint before generating options.");
-      return;
-    }
+  async function revealGiftIdeas() {
+    if (!selectedPerson) return;
+    setGiftStatus("loading");
+    setGiftError("");
 
     try {
-      const response = await fetch("/api/codex/gift-source", {
+      const response = await fetch("/api/gift-source", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ input: sourceText, personId: "sarah", preferLive: true })
+        body: JSON.stringify({
+          input: sourceTextForPerson(selectedPerson),
+          personId: selectedPerson.id,
+          preferLive: true
+        })
       });
       const payload = await response.json();
-      if (!response.ok || !payload.ok) throw new Error(payload.error || "Gift matching could not complete.");
+      if (!response.ok || !payload.ok) throw new Error(payload.error || "Gift ideas could not be prepared.");
 
-      const nextOptions = normalizeOptions(payload.options || [payload.candidate]);
-      updateState((current) => ({
+      const nextIdeas = normalizeIdeas(payload.options || [payload.candidate], selectedPerson);
+      setGiftIdeas(nextIdeas);
+      setState((current) => ({
         ...current,
         codexRun: {
           status: "complete",
           source: payload.source,
-          options: nextOptions
-        },
-        auditEvents: [
-          createAuditEvent("Gift options generated", `${nextOptions.length} options prepared for Sarah.`, payload.source || "matching"),
-          ...current.auditEvents
-        ]
-      }));
-      recordKinloopAuditEvent({
-        client: getBrowserSupabaseClient(),
-        eventType: "gift_options_generated",
-        summary: `${nextOptions.length} options prepared for Sarah.`,
-        metadata: {
-          source: payload.source,
-          option_titles: nextOptions.map((option) => option.title)
+          productSource: payload.productSource,
+          options: nextIdeas
         }
-      }).catch(() => {});
-      showToast("Gift options generated.");
+      }));
+      setGiftStatus("ready");
+      showToast("Gift ideas ready.");
     } catch {
-      setMatchingError("Gift matching could not complete. The message text is still available for review.");
-    } finally {
-      setMatchingStatus("idle");
+      const fallback = gifts.slice(0, 3).map((gift) => giftToIdea(gift, selectedPerson));
+      setGiftIdeas(fallback);
+      setGiftStatus("ready");
+      setGiftError("Using saved product feed while live matching is unavailable.");
     }
   }
 
-  function approveGift(option) {
-    updateState((current) => ({
+  async function approveIdea(idea) {
+    setState((current) => ({
       ...current,
       approval: {
-        giftId: option.id,
-        title: option.title,
+        giftId: idea.id,
+        personId: selectedPerson?.id,
+        title: idea.title,
         approvedAt: new Date().toISOString(),
-        reason: option.why
-      },
-      auditEvents: [
-        createAuditEvent("Gift approved", `${option.title} approved for Sarah.`, "human"),
-        ...current.auditEvents
-      ]
+        reason: idea.why
+      }
     }));
-    recordKinloopApproval({
-      client: getBrowserSupabaseClient(),
-      option
-    }).catch(() => {});
-    showToast(`${option.title} approved.`);
+    recordKinloopApproval({ client: getBrowserSupabaseClient(), option: idea }).catch(() => {});
+    showToast(`${idea.title} approved.`);
   }
 
   async function signIn(event) {
@@ -174,13 +144,13 @@ export default function KinloopCockpit() {
 
     const client = getBrowserSupabaseClient();
     if (!client) {
-      setAuthError("Sign-in is not configured on this device.");
+      setAuthError("Sign-in is not configured here. You can still use this device.");
       return;
     }
 
     const result = await client.auth.signInWithPassword(authForm);
     if (result.error) {
-      setAuthError("We could not sign you in with those details.");
+      setAuthError("Those details did not sign you in.");
       return;
     }
 
@@ -200,19 +170,19 @@ export default function KinloopCockpit() {
     <main className="kinloop-shell">
       <header className="topbar">
         <button className="brand-lockup" aria-label="Kinloop home">
-          <span className="brand-orbit">K</span>
+          <span className="brand-mark">K</span>
           <span>
             <strong>Kinloop</strong>
-            <small>Agentic gift approval</small>
+            <small>Gift concierge</small>
           </span>
         </button>
-        <div className="topbar-status" aria-label="Workflow status">
-          <StatusPill label="Hint" active={Boolean(state.signal)} />
-          <StatusPill label="Options" active={state.codexRun.status === "complete"} />
+        <nav className="topbar-status" aria-label="Progress">
+          <StatusPill label="Sources" active={people.length > 0} />
+          <StatusPill label="Ideas" active={giftIdeas.length > 0} />
           <StatusPill label="Approved" active={Boolean(state.approval)} />
-        </div>
+        </nav>
         <div className="account-cluster">
-          <span>{session ? session.user.email : "Local session"}</span>
+          <span>{session ? session.user.email : "This device"}</span>
           {session ? (
             <button className="button quiet" onClick={signOut}>Sign out</button>
           ) : (
@@ -221,58 +191,178 @@ export default function KinloopCockpit() {
         </div>
       </header>
 
-      <section className={`command-center ${workflowState}`}>
-        <SarahPanel />
-        <SignalPanel
-          signal={state.signal}
-          sourceText={sourceText}
-          signalStatus={signalStatus}
-          signalError={signalError}
-          onImport={importAgentMailHint}
-          onSourceText={setSourceText}
-        />
+      <section className="hero-grid" aria-label="Gift concierge workspace">
+        <section className="source-panel" aria-labelledby="source-title">
+          <div className="source-copy">
+            <p className="eyebrow">Connected sources</p>
+            <h1 id="source-title">Birthdays, clues, and gift timing in one place.</h1>
+            <p>Import relationship context, then choose what feels right. Kinloop keeps the decision yours.</p>
+          </div>
+          <button className="button primary large" onClick={importSources} disabled={sourceStatus === "loading"}>
+            {sourceStatus === "loading" ? "Importing sources" : people.length ? "Refresh sources" : "Import connected sources"}
+          </button>
+          <div className="source-stats" aria-label="Source summary">
+            <Metric label="People" value={people.length ? String(people.length) : "Ready"} />
+            <Metric label="Clues" value={people.length ? String(totalClues(people)) : "Waiting"} />
+            <Metric label="Next date" value={priorityPerson?.birthday || "After import"} />
+          </div>
+        </section>
+
+        <section className="priority-panel" aria-labelledby="priority-title">
+          <p className="eyebrow">Top priority</p>
+          {priorityPerson ? (
+            <>
+              <div className="priority-head">
+                <Avatar name={priorityPerson.name} tone={priorityPerson.id} />
+                <div>
+                  <h2 id="priority-title">{priorityPerson.name}</h2>
+                  <p>{priorityPerson.relation} · {priorityPerson.timing}</p>
+                </div>
+              </div>
+              <p>{priorityPerson.note}</p>
+              <button className="button" onClick={() => setSelectedId(priorityPerson.id)}>
+                Review this birthday
+              </button>
+            </>
+          ) : (
+            <>
+              <h2 id="priority-title">No birthday selected yet</h2>
+              <p>Import sources to find the next relationship that needs a thoughtful gift decision.</p>
+            </>
+          )}
+        </section>
       </section>
 
-      <section className="options-section" aria-labelledby="options-heading">
+      <section className="workspace-grid">
+        <aside className="people-panel" aria-labelledby="people-title">
+          <div className="panel-title">
+            <p className="eyebrow">People</p>
+            <h2 id="people-title">Upcoming birthdays</h2>
+          </div>
+          <div className="people-list">
+            {(people.length ? people : recipients).map((person) => (
+              <button
+                className={person.id === selectedPerson?.id ? "person-row active" : "person-row"}
+                key={person.id}
+                onClick={() => setSelectedId(person.id)}
+              >
+                <Avatar name={person.name} tone={person.id} />
+                <span>
+                  <strong>{person.name}</strong>
+                  <small>{person.birthday} · {person.timing}</small>
+                </span>
+              </button>
+            ))}
+          </div>
+        </aside>
+
+        <section className="detail-panel" aria-labelledby="detail-title">
+          {selectedPerson ? (
+            <>
+              <div className="panel-title split">
+                <div>
+                  <p className="eyebrow">Gift opportunity</p>
+                  <h2 id="detail-title">{selectedPerson.name}</h2>
+                </div>
+                <span className="date-chip">{selectedPerson.timing}</span>
+              </div>
+
+              <div className="essentials-grid">
+                <label>
+                  Relationship
+                  <input value={selectedPerson.relation} onChange={(event) => updatePerson("relation", event.target.value)} />
+                </label>
+                <label>
+                  Birthday
+                  <input value={selectedPerson.birthday} onChange={(event) => updatePerson("birthday", event.target.value)} />
+                </label>
+                <label>
+                  Budget
+                  <input value={selectedPerson.budget} onChange={(event) => updatePerson("budget", event.target.value)} />
+                </label>
+                <label>
+                  Address
+                  <input value={selectedPerson.addressStatus} onChange={(event) => updatePerson("addressStatus", event.target.value)} />
+                </label>
+              </div>
+
+              <label className="note-field">
+                Notes
+                <textarea value={selectedPerson.note} onChange={(event) => updatePerson("note", event.target.value)} rows={4} />
+              </label>
+
+              <div className="clue-strip">
+                {selectedPerson.clues.map((clue) => <span key={clue}>{clue}</span>)}
+              </div>
+
+              <div className="reveal-row">
+                <button className="button primary" onClick={revealGiftIdeas} disabled={giftStatus === "loading"}>
+                  {giftStatus === "loading" ? "Revealing ideas" : "Reveal gift ideas"}
+                </button>
+                <p>{giftIdeas.length ? `${giftIdeas.length} ideas prepared for ${selectedPerson.name}.` : "Ideas are based on sources, preferences, and product availability."}</p>
+              </div>
+              {giftError && <p className="inline-error">{giftError}</p>}
+            </>
+          ) : (
+            <div className="empty-state">
+              <h2 id="detail-title">Import sources to begin</h2>
+              <p>Kinloop will discover people, dates, and gift clues from the source bundle.</p>
+            </div>
+          )}
+        </section>
+      </section>
+
+      <section className="ideas-section" aria-labelledby="ideas-title">
         <div className="section-title">
           <div>
-            <p className="eyebrow">Gift matching</p>
-            <h2 id="options-heading">Three gift paths for Sarah</h2>
+            <p className="eyebrow">Gift ideas</p>
+            <h2 id="ideas-title">{selectedPerson ? `For ${selectedPerson.name}` : "Ready when sources are imported"}</h2>
           </div>
-          <div className="option-actions">
-            <span className={`run-state ${state.codexRun.status === "complete" ? "complete" : matchingStatus}`}>
-              {state.codexRun.status === "complete" ? "Options ready" : matchingStatus === "loading" ? "Generating" : "Awaiting hint"}
-            </span>
-            <button className="button primary" onClick={runCodexScan} disabled={!state.signal || matchingStatus === "loading"}>
-              {matchingStatus === "loading" ? "Generating options" : "Generate gift options"}
-            </button>
-          </div>
+          {approvedIdea && <strong className="approved-note">{approvedIdea.title} approved</strong>}
         </div>
-        {matchingError && <p className="inline-error option-error">{matchingError}</p>}
-        {approvedOption && <strong className="approved-note">{approvedOption.title} approved</strong>}
-        <div className="option-grid">
-          {options.map((option, index) => (
-            <GiftOption
-              key={option.id}
-              option={option}
+
+        <div className="idea-grid">
+          {(giftIdeas.length ? giftIdeas : gifts.slice(0, 3).map((gift) => giftToIdea(gift, selectedPerson))).map((idea, index) => (
+            <GiftIdea
+              key={idea.id || idea.title}
+              idea={idea}
               index={index}
-              approved={state.approval?.giftId === option.id}
-              onApprove={approveGift}
+              approved={state.approval?.giftId === idea.id}
+              onApprove={approveIdea}
             />
           ))}
         </div>
       </section>
 
-      <section className="bottom-grid">
-        <AuditTrail events={state.auditEvents} />
-        <ApprovalBoundary approval={state.approval} />
+      <section className="reminder-band" aria-labelledby="reminder-title">
+        <div>
+          <p className="eyebrow">Reminder</p>
+          <h2 id="reminder-title">Get a call before the gift window closes.</h2>
+          <p>Kinloop can remind you three days before the order deadline so the final decision does not slip.</p>
+        </div>
+        <label className="toggle-row">
+          <input
+            type="checkbox"
+            checked={reminderEnabled}
+            onChange={(event) => {
+              setReminderEnabled(event.target.checked);
+              showToast(event.target.checked ? "Reminder call enabled." : "Reminder call paused.");
+            }}
+          />
+          <span>{reminderEnabled ? "Reminder call enabled" : "Call me 3 days before"}</span>
+        </label>
       </section>
+
+      <footer className="app-footer">
+        <span>Privacy and controls</span>
+        <span>Approval only. No purchase or payment happens in Kinloop.</span>
+      </footer>
 
       {authOpen && (
         <form className="signin-drawer" onSubmit={signIn}>
           <div>
             <p className="eyebrow">Account</p>
-            <h2>Sign in to sync Kinloop</h2>
+            <h2>Sign in to save Kinloop</h2>
           </div>
           <label>
             Email
@@ -302,141 +392,37 @@ export default function KinloopCockpit() {
   );
 }
 
-function SarahPanel() {
+function GiftIdea({ idea, index, approved, onApprove }) {
   return (
-    <section className="panel sarah-panel" aria-labelledby="sarah-title">
-      <div className="countdown-card">
-        <span>14</span>
-        <small>days until birthday</small>
-      </div>
-      <div>
-        <p className="eyebrow">{sarah.relation}</p>
-        <h1 id="sarah-title">Sarah's birthday needs a gift decision.</h1>
-        <p>{sarah.note}</p>
-      </div>
-      <div className="profile-row">
-        <Avatar name={sarah.name} />
-        <div>
-          <strong>{sarah.name}</strong>
-          <span>{sarah.budget} · arrive before June 2</span>
-        </div>
-      </div>
-      <SignalTags label="Likes" items={sarah.likes} />
-      <SignalTags label="Avoid" items={sarah.avoid} muted />
-    </section>
-  );
-}
-
-function SignalPanel({ signal, sourceText, signalStatus, signalError, onImport, onSourceText }) {
-  const extracted = signal?.extracted;
-
-  return (
-    <section className="panel signal-panel" aria-labelledby="signal-title">
-      <div className="panel-head">
-        <div>
-          <p className="eyebrow">AgentMail inbox</p>
-          <h2 id="signal-title">Latest gift hint</h2>
-        </div>
-        <span className="address-chip">kinloop-agent@agentmail.to</span>
-      </div>
-      <button className="button primary" onClick={onImport} disabled={signalStatus === "loading"}>
-        {signalStatus === "loading" ? "Importing hint" : "Import latest hint"}
-      </button>
-      {signalError && <p className="inline-error">{signalError}</p>}
-      <div className="signal-readout">
-        <strong>{signal?.subject || "No hint imported yet"}</strong>
-        <p>{extracted?.giftLead || "Kinloop is waiting for the newest message from the agent inbox."}</p>
-        {extracted && (
-          <div className="mini-grid">
-            <Metric label="From" value={signal.from || "AgentMail"} />
-            <Metric label="Budget" value={extracted.budget || sarah.budget} />
-            <Metric label="Delivery" value={extracted.delivery || "Before June 2"} />
-          </div>
-        )}
-      </div>
-      <label className="source-editor">
-        Gift hint message
-        <textarea
-          value={sourceText}
-          onChange={(event) => onSourceText(event.target.value)}
-          rows={7}
-          readOnly={!signal}
-          placeholder="Import the latest AgentMail hint to populate this message."
-        />
-      </label>
-    </section>
-  );
-}
-
-function GiftOption({ option, index, approved, onApprove }) {
-  return (
-    <article className={`gift-option ${approved ? "approved" : ""}`}>
-      <div className="gift-art" aria-hidden="true">
+    <article className={approved ? "gift-idea approved" : "gift-idea"}>
+      <div className={`idea-art tone-${index + 1}`} aria-hidden="true">
         <span>{index + 1}</span>
       </div>
-      <div className="gift-copy">
+      <div className="idea-copy">
         <div className="gift-title-row">
-          <h3>{option.title}</h3>
-          <strong>{option.fitScore}%</strong>
+          <h3>{idea.title}</h3>
+          <strong>{idea.fitScore}%</strong>
         </div>
-        <p>{option.caption}</p>
+        <p>{idea.caption}</p>
         <dl>
           <div>
             <dt>Why it fits</dt>
-            <dd>{option.why}</dd>
+            <dd>{idea.why}</dd>
           </div>
           <div>
-            <dt>Watch-outs</dt>
-            <dd>{option.risk}</dd>
+            <dt>Check first</dt>
+            <dd>{idea.risk}</dd>
           </div>
         </dl>
       </div>
-      <div className="gift-footer">
-        <span>{option.priceRange}</span>
-        <span>{option.deliveryNote}</span>
+      <div className="idea-footer">
+        <span>{idea.priceRange}</span>
+        <span>{idea.deliveryNote}</span>
       </div>
-      <button className="button approve-button" onClick={() => onApprove(option)} disabled={approved}>
-        {approved ? "Approved" : "Approve gift"}
+      <button className="button approve-button" onClick={() => onApprove(idea)} disabled={approved}>
+        {approved ? "Approved" : "Approve"}
       </button>
     </article>
-  );
-}
-
-function AuditTrail({ events }) {
-  return (
-    <section className="panel audit-panel" aria-labelledby="audit-title">
-      <div className="panel-head">
-        <div>
-          <p className="eyebrow">Audit trail</p>
-          <h2 id="audit-title">What Kinloop changed</h2>
-        </div>
-      </div>
-      <div className="audit-list">
-        {events.slice(0, 5).map((event) => (
-          <article key={event.id}>
-            <time>{formatTime(event.createdAt)}</time>
-            <div>
-              <strong>{event.title}</strong>
-              <p>{event.summary}</p>
-            </div>
-          </article>
-        ))}
-      </div>
-    </section>
-  );
-}
-
-function ApprovalBoundary({ approval }) {
-  return (
-    <section className="panel boundary-panel" aria-labelledby="boundary-title">
-      <p className="eyebrow">Human in the loop</p>
-      <h2 id="boundary-title">{approval ? "Approval recorded" : "Approval is still yours"}</h2>
-      <p>
-        {approval
-          ? `${approval.title} is approved for Sarah. Kinloop recorded the decision path without taking a purchase action.`
-          : "Kinloop can import signals and prepare gift options. The final decision requires your explicit approval."}
-      </p>
-    </section>
   );
 }
 
@@ -444,17 +430,9 @@ function StatusPill({ label, active }) {
   return <span className={active ? "status-pill active" : "status-pill"}>{label}</span>;
 }
 
-function Avatar({ name }) {
-  return <span className="avatar">{name.split(" ").map((part) => part[0]).join("")}</span>;
-}
-
-function SignalTags({ label, items, muted = false }) {
-  return (
-    <div className={muted ? "signal-tags muted" : "signal-tags"}>
-      <strong>{label}</strong>
-      <div>{items.map((item) => <span key={item}>{item}</span>)}</div>
-    </div>
-  );
+function Avatar({ name, tone = "" }) {
+  const initials = name.split(" ").map((part) => part[0]).join("").slice(0, 2);
+  return <span className={`avatar avatar-${tone.replace(/[^a-z0-9]/gi, "")}`}>{initials}</span>;
 }
 
 function Metric({ label, value }) {
@@ -466,34 +444,61 @@ function Metric({ label, value }) {
   );
 }
 
-function normalizeOptions(rawOptions) {
-  const prepared = rawOptions.filter(Boolean).slice(0, 3).map((option, index) => ({
-    id: option.id || `codex-option-${index + 1}`,
-    title: option.title,
-    caption: option.caption,
-    why: option.why,
-    risk: option.risk,
-    priceRange: option.priceRange,
-    deliveryNote: option.deliveryNote,
-    sellerSignal: option.sellerSignal,
-    fitScore: option.fitScore
+function buildDiscoveredPeople() {
+  return recipients
+    .map((person) => {
+      const source = sourceBundle.byPerson?.[person.id] || {};
+      const interests = source.interests?.length ? source.interests : person.likes;
+      const avoid = source.avoid?.length ? source.avoid : person.avoid;
+      return {
+        ...person,
+        clues: interests.slice(0, 5),
+        avoid,
+        sourceCount: source.messageCount || person.sourceSummary?.length || 0,
+        sourceSubjects: source.subjects || []
+      };
+    })
+    .sort(dueSoonest);
+}
+
+function sourceTextForPerson(person) {
+  const source = sourceBundle.byPerson?.[person.id] || {};
+  return [
+    `Name: ${person.name}`,
+    `Relationship: ${person.relation}`,
+    `Birthday: ${person.birthday}`,
+    `Budget: ${person.budget}`,
+    `Interests: ${person.clues.join(", ")}`,
+    `Avoid: ${(person.avoid || []).join(", ")}`,
+    `Notes: ${person.note}`,
+    `Recent subjects: ${(source.subjects || []).slice(0, 5).join("; ")}`
+  ].join("\n");
+}
+
+function normalizeIdeas(rawIdeas, person) {
+  const prepared = rawIdeas.filter(Boolean).slice(0, 3).map((idea, index) => ({
+    id: idea.id || `gift-idea-${index + 1}`,
+    title: idea.title || idea.name,
+    caption: idea.caption || "A gift idea selected from the product feed.",
+    why: idea.why || `Matches ${person.name}'s current clues.`,
+    risk: idea.risk || idea.consider || "Confirm delivery and fit before approving.",
+    priceRange: idea.priceRange || idea.displayPrice || "Price shown by seller",
+    deliveryNote: idea.deliveryNote || idea.delivery || "Check delivery before the birthday",
+    sellerSignal: idea.sellerSignal || idea.seller || "Seller details available before purchase",
+    fitScore: clampScore(idea.fitScore || idea.score || 82)
   }));
 
-  if (prepared.length >= 3) return prepared;
-
-  const fill = gifts.slice(0, 3).map(giftToOption);
-  while (prepared.length < 3) {
-    prepared.push(fill[prepared.length]);
-  }
+  const fill = gifts.map((gift) => giftToIdea(gift, person));
+  while (prepared.length < 3) prepared.push(fill[prepared.length]);
   return prepared;
 }
 
-function giftToOption(gift) {
+function giftToIdea(gift, person) {
   return {
     id: gift.id,
     title: gift.name,
     caption: gift.caption,
-    why: gift.why,
+    why: gift.why || (person ? `Matches ${person.name}'s clues.` : "Matches imported gift clues."),
     risk: gift.consider,
     priceRange: gift.displayPrice,
     deliveryNote: gift.delivery,
@@ -502,8 +507,17 @@ function giftToOption(gift) {
   };
 }
 
-function formatTime(value) {
-  const date = new Date(value);
-  if (Number.isNaN(date.getTime())) return "Now";
-  return date.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
+function totalClues(list) {
+  return list.reduce((count, person) => count + (person.clues?.length || 0), 0);
+}
+
+function timingDays(value) {
+  const match = String(value || "").match(/\d+/);
+  return match ? Number(match[0]) : 999;
+}
+
+function clampScore(value) {
+  const score = Number(value);
+  if (!Number.isFinite(score)) return 82;
+  return Math.min(100, Math.max(1, Math.round(score)));
 }

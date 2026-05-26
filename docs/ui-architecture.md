@@ -1,25 +1,26 @@
 # UI Architecture
 
-Product route, copy, and state guidance for Kinloop. Architecture decisions live in `docs/architecture.md`.
+Product route, copy, and state guidance for Kinloop. Runtime architecture decisions live in `docs/architecture.md`.
 
 ## Product Goal
 
-Make Kinloop feel like an agentic gift approval cockpit, not a marketplace clone or admin console.
+Make Kinloop feel like a consumer gift concierge, not a marketplace clone, admin console, or technical demo panel.
 
 ```txt
-Sarah's birthday is close. Kinloop has a signal. Codex turns it into gift options. The human approves.
+Import sources. Find the birthday. Reveal gift ideas. Approve one. Set the reminder.
 ```
 
 ## Experience Model
 
 The app should present one primary workflow:
 
-1. Sarah's birthday context and countdown.
-2. AgentMail signal import.
-3. Extracted relationship context.
-4. Codex Signal Studio transformation.
-5. Three approval-ready gift options.
-6. Human approval and audit trail.
+1. Sign in or continue on the current device.
+2. Import connected sources.
+3. Review discovered people and upcoming birthdays.
+4. Edit essentials: relationship, birthday, budget, address status, and notes.
+5. Reveal gift ideas.
+6. Approve one idea.
+7. Opt into a reminder call.
 
 ## Copy Rules
 
@@ -27,15 +28,16 @@ Do not use internal implementation labels in the product UI. Product copy should
 
 Use product language:
 
-- `Import latest hint`
-- `Relationship signal`
-- `Run Codex gift scan`
+- `Connected sources`
+- `Import connected sources`
+- `Upcoming birthdays`
+- `Gift opportunity`
+- `Reveal gift ideas`
 - `Why it fits`
-- `Watch-outs`
-- `Approve gift`
-- `Approved`
-- `Audit trail`
-- `Account`
+- `Check first`
+- `Approve`
+- `Call me 3 days before`
+- `Privacy and controls`
 
 Truth labels belong in docs, tests, and operator surfaces.
 
@@ -43,12 +45,14 @@ Truth labels belong in docs, tests, and operator surfaces.
 
 | Surface | Purpose | Primary state |
 |---|---|---|
-| Header | Product identity, account state, approval state | Signed-in user or local session |
-| Sarah panel | Countdown, relationship, preferences, constraints | Recipient profile |
-| Agent inbox panel | Import and summarize the latest AgentMail hint | Signal loading, error, imported signal |
-| Codex Signal Studio | Show transformation trace and structured output | Idle, running, complete, error |
-| Gift options | Compare three generated options | Option list and selected approval |
-| Audit trail | Explain what happened | Signal imported, Codex ran, gift approved |
+| Header | Product identity, account state, progress state | Signed-in user or current device |
+| Source panel | Import and summarize relationship context | Idle, importing, imported |
+| Priority panel | Show the next birthday that needs attention | Empty or prioritized person |
+| People rail | Navigate discovered people | Imported people, selected person |
+| Detail panel | Edit essentials and reveal gift ideas | Selected person, loading, error, ready |
+| Gift ideas | Compare and approve one idea | Suggested ideas and selected approval |
+| Reminder band | Opt into decision reminder | Enabled or paused |
+| Footer | Quiet privacy and boundary copy | Always visible |
 
 ## Product State
 
@@ -57,12 +61,11 @@ The main app state should stay small:
 ```js
 {
   session,
-  recipient,
-  signal,
-  codexRun,
-  giftOptions,
+  people,
+  selectedPerson,
+  giftIdeas,
   approval,
-  auditEvents
+  reminderEnabled
 }
 ```
 
@@ -70,61 +73,48 @@ Avoid product state for baskets, merchant handoffs, broad saved lists, marketpla
 
 ## Visual Direction
 
-- Dense, polished cockpit layout.
-- Warm human context balanced with technical clarity.
-- Anime-style committed portraits and gift imagery.
-- No stock-photo dependency in the final recording path.
+- Light, crisp, product-native interface.
+- Warm relationship context balanced with precise controls.
+- A clear first viewport: sources, priority, people, and reveal path.
+- No stock-photo dependency in the main visual identity.
 - No ecommerce-cart visual language.
 - No nested card stacks.
-- Stable controls that do not resize during import/generation.
+- Stable controls that do not resize during import/reveal.
 
 ## Interaction Rules
 
-### Sarah Context
+### Source Import
 
-Make Sarah's birthday the emotional anchor. Show timing, likes, avoid list, budget, and deadline.
+The import button should be clear and consumer-facing. Missing credentials or live integration failure should never expose stack traces in the UI.
 
-### Agent Inbox
+### People And Birthdays
 
-The import button should clearly read from `kinloop-agent@agentmail.to`. Missing credentials should fail closed with a short connection message.
+The people rail should make the next birthday obvious, but it should still let the user switch context quickly.
 
-### Codex Signal Studio
+### Gift Reveal
 
-The user should see that Codex is doing structured transformation work, but the UI should stay product-facing. Show trace steps such as:
+The reveal action should feel like a product action. The implementation may call Codex and Shopify-backed product candidates, but the app should simply present useful ideas.
 
-- Normalize signal
-- Load Sarah context
-- Generate options
-- Apply guardrails
-- Prepare approval
-
-### Gift Options
+### Gift Ideas
 
 Each option should show:
 
-- image
 - title
 - price range
-- delivery confidence
+- delivery note
 - why it fits
-- watch-outs
+- check-first risk
 - fit score
 - approval button
 
-### Audit Trail
+### Reminder
 
-Keep it compact and useful:
-
-- signal imported
-- options generated
-- gift approved
-
-Do not expose raw prompts, secrets, stack traces, or low-level provider logs.
+Reminder opt-in should be explicit. It records preference; live channel delivery remains credentialed and allowlisted.
 
 ## Quality Bar
 
 - The first viewport should communicate the whole app idea.
 - The primary action should be obvious.
 - The app should feel real even when a live integration is unavailable.
-- Safety should be expressed through control, auditability, and approval.
-- Internal architecture labels stay out of the product surface unless they are the intended technical wow moment, such as `Codex Signal Studio`.
+- Safety should be expressed through control, approval, and privacy copy.
+- Internal architecture labels stay out of the product surface.

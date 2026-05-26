@@ -1,13 +1,26 @@
 import { readFileSync } from "node:fs";
 
-const files = [
-  "app/page.jsx",
-  "data/kinloop/people.json",
-  "data/kinloop/mock-product-feed.json"
+const app = readFileSync("app/page.jsx", "utf8");
+const renderedStart = app.indexOf("return (\n    <main");
+const renderedApp = app.slice(renderedStart);
+const lowerApp = renderedApp.toLowerCase();
+
+const bannedAppTerms = [
+  "agentmail",
+  "codex",
+  "openclaw",
+  "mcp",
+  "sdk",
+  "audit trail",
+  "human in the loop",
+  "demo",
+  "fixture",
+  "cockpit"
 ];
 
-const bannedPhrases = [
+const bannedShopperPhrases = [
   "cart",
+  "checkout",
   "no real charge",
   "powered by codex",
   "sync with supabase",
@@ -18,29 +31,29 @@ const bannedPhrases = [
 
 const requiredAppCopy = [
   "Kinloop",
-  "AgentMail inbox",
-  "Latest gift hint",
-  "Gift matching",
-  "Generate gift options",
+  "Connected sources",
+  "Import connected sources",
+  "Upcoming birthdays",
+  "Gift opportunity",
+  "Reveal gift ideas",
   "Why it fits",
-  "Watch-outs",
-  "Approve gift",
-  "Audit trail",
-  "Account"
+  "Approve",
+  "Call me 3 days before",
+  "Privacy and controls"
 ];
 
 const failures = [];
 
-for (const file of files) {
-  const content = readFileSync(file, "utf8").toLowerCase();
-  for (const phrase of bannedPhrases) {
-    if (content.includes(phrase)) failures.push(`${file} contains banned shopper-copy phrase: ${phrase}`);
-  }
+for (const term of bannedAppTerms) {
+  if (lowerApp.includes(term)) failures.push(`app/page.jsx contains internal shopper-facing term: ${term}`);
 }
 
-const app = readFileSync("app/page.jsx", "utf8");
+for (const phrase of bannedShopperPhrases) {
+  if (lowerApp.includes(phrase)) failures.push(`app/page.jsx contains banned shopper-copy phrase: ${phrase}`);
+}
+
 for (const phrase of requiredAppCopy) {
-  if (!app.includes(phrase)) failures.push(`app/page.jsx missing expected shopper copy: ${phrase}`);
+  if (!renderedApp.includes(phrase)) failures.push(`app/page.jsx missing expected shopper copy: ${phrase}`);
 }
 
 if (failures.length > 0) {
