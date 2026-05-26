@@ -1,29 +1,24 @@
-import { existsSync, readFileSync } from "node:fs";
+import { existsSync, readFileSync, readdirSync } from "node:fs";
 
 const requiredFiles = [
   "README.md",
-  "PRODUCT.md",
   "DESIGN.md",
   "AGENTS.md",
   "docs/architecture.md",
-  "docs/implementation-plan.md",
   "docs/ui-architecture.md",
   "docs/future-considerations.md",
   "docs/container-workflow.md",
-  "docs/recording-script.md",
   "data/kinloop/README.md"
 ];
 
 const requiredReadmeReferences = [
-  "PRODUCT.md",
   "DESIGN.md",
   "AGENTS.md",
   "docs/architecture.md",
-  "docs/implementation-plan.md",
   "docs/ui-architecture.md",
   "docs/future-considerations.md",
   "docs/container-workflow.md",
-  "docs/recording-script.md"
+  "docs/execution-journal/"
 ];
 
 const forbiddenPatterns = [
@@ -37,6 +32,12 @@ const failures = [];
 
 for (const file of requiredFiles) {
   if (!existsSync(file)) failures.push(`Missing required file: ${file}`);
+}
+
+if (!existsSync("docs/execution-journal")) {
+  failures.push("Missing required directory: docs/execution-journal");
+} else if (readdirSync("docs/execution-journal").filter((name) => name.endsWith(".md")).length === 0) {
+  failures.push("docs/execution-journal must contain at least one markdown entry");
 }
 
 for (const directory of ["memory", `proto${"type"}`]) {
@@ -60,4 +61,4 @@ if (failures.length > 0) {
   process.exit(1);
 }
 
-console.log(`Docs check passed (${requiredFiles.length} files).`);
+console.log(`Docs check passed (${requiredFiles.length} files, execution journal present).`);

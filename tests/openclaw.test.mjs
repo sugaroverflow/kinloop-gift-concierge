@@ -6,6 +6,7 @@ import { isOpenClawTargetAllowed, openClawModes, resolveOpenClawMode } from "../
 import { buildReminderPayload } from "../lib/openclaw/payloads.js";
 import { parseOpenClawReply } from "../lib/openclaw/parse-reply.js";
 import { POST as openClawReminderRoute } from "../app/api/openclaw/reminder/route.js";
+import { GET as openClawStatusRoute } from "../app/api/openclaw/status/route.js";
 
 test("reply parser maps 1, 2, 3 to gift approvals", () => {
   assert.deepEqual(parseOpenClawReply("1"), { type: "approve", giftId: "pottery-voucher", raw: "1" });
@@ -34,17 +35,19 @@ test("reminder payload includes numbered options and safe reply instructions", (
 });
 
 test("adapter defaults to preview and does not send", async () => {
-  const payload = buildReminderPayload({
-    recipientName: "Sarah",
-    birthday: "June 2",
-    giftOptions: gifts,
-    approvalUrl: "http://localhost:3000"
-  });
-  const result = await sendReminderViaOpenClaw({ target: "+15555550123", payload });
+  await withOpenClawEnv(async () => {
+    const payload = buildReminderPayload({
+      recipientName: "Sarah",
+      birthday: "June 2",
+      giftOptions: gifts,
+      approvalUrl: "http://localhost:3000"
+    });
+    const result = await sendReminderViaOpenClaw({ target: "+15555550123", payload });
 
-  assert.equal(resolveOpenClawMode({}), openClawModes.PREVIEW);
-  assert.equal(result.sent, false);
-  assert.equal(result.command[0], "openclaw");
+    assert.equal(resolveOpenClawMode({}), openClawModes.PREVIEW);
+    assert.equal(result.sent, false);
+    assert.equal(result.command[0], "openclaw");
+  });
 });
 
 test("cli execution requires explicit execute flag and allowlisted target", async () => {
@@ -97,6 +100,33 @@ test("cli execution blocks non-allowlisted targets", async () => {
   assert.match(result.error, /allowlist/i);
 });
 
+test("cli execution can route through VPS over ssh", async () => {
+  const payload = buildReminderPayload({
+    recipientName: "Sarah",
+    birthday: "June 2",
+    giftOptions: gifts,
+    approvalUrl: "http://localhost:3000"
+  });
+
+  const result = await sendReminderViaOpenClaw({
+    target: "+15555550123",
+    payload,
+    mode: openClawModes.CLI,
+    env: {
+      OPENCLAW_CLI_EXECUTE: "1",
+      OPENCLAW_TARGET_ALLOWLIST: "+15555550123",
+      OPENCLAW_SSH_HOST: "ubuntu@vps.example",
+      OPENCLAW_SSH_OPTIONS: "-o BatchMode=yes"
+    },
+    runner: async () => ({ stdout: "queued-via-ssh", stderr: "" })
+  });
+
+  assert.equal(result.sent, true);
+  assert.equal(result.command[0], "ssh");
+  assert.equal(result.command.includes("ubuntu@vps.example"), true);
+  assert.equal(result.stdout, "queued-via-ssh");
+});
+
 test("voice escalation exposes browser or transcript recovery", async () => {
   const result = await startVoiceEscalation({
     to: "+15555550123",
@@ -127,7 +157,7 @@ test("OpenClaw reminder route previews message and voice", async () => {
 test("OpenClaw reminder route blocks sends without explicit target", async () => {
   const response = await openClawReminderRoute(new Request("http://localhost/api/openclaw/reminder", {
     method: "POST",
-    body: JSON.stringify({ mode: openClawModes.CLI })
+    body: JSON.stringify({ mode: openClawModes.CLI, target: "kinloop-recipient" })
   }));
   const payload = await response.json();
 
@@ -135,3 +165,46 @@ test("OpenClaw reminder route blocks sends without explicit target", async () =>
   assert.equal(payload.ok, false);
   assert.match(payload.error, /explicit target/i);
 });
+
+test("OpenClaw status route reports setup readiness summary", async () => {
+  await withOpenClawEnv(async () => {
+    process.env.OPENCLAW_MODE = openClawModes.CLI;
+    process.env.OPENCLAW_CLI_EXECUTE = "1";
+    process.env.OPENCLAW_TEST_TARGET = "+15555550123";
+    process.env.OPENCLAW_TARGET_ALLOWLIST = "+15555550123";
+    process.env.OPENCLAW_CHANNEL = "whatsapp";
+
+    const response = await openClawStatusRoute();
+    const payload = await response.json();
+
+    assert.equal(payload.ok, true);
+    assert.equal(payload.ready, true);
+    assert.match(payload.summary, /ready/i);
+  });
+});
+
+async function withOpenClawEnv(callback) {
+  const keys = [
+    "OPENCLAW_MODE",
+    "OPENCLAW_SSH_HOST",
+    "OPENCLAW_SSH_OPTIONS",
+    "OPENCLAW_CLI_EXECUTE",
+    "OPENCLAW_TEST_TARGET",
+    "OPENCLAW_TARGET_ALLOWLIST",
+    "OPENCLAW_CHANNEL"
+  ];
+  const previous = Object.fromEntries(keys.map((key) => [key, process.env[key]]));
+  for (const key of keys) delete process.env[key];
+
+  try {
+    return await callback();
+  } finally {
+    for (const key of keys) {
+      if (previous[key] === undefined) {
+        delete process.env[key];
+      } else {
+        process.env[key] = previous[key];
+      }
+    }
+  }
+}

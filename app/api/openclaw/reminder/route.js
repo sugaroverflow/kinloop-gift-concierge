@@ -1,4 +1,5 @@
 import { gifts } from "../../../../lib/product-data.js";
+import { readJson } from "../../../../lib/api/read-json.js";
 import { loadProductCandidates } from "../../../../lib/product-source.js";
 import { sendReminderViaOpenClaw, startVoiceEscalation } from "../../../../lib/openclaw/adapter.js";
 import { openClawModes, resolveOpenClawMode } from "../../../../lib/openclaw/modes.js";
@@ -46,12 +47,4 @@ export async function POST(request) {
     message,
     voice
   });
-}
-
-async function readJson(request) {
-  try {
-    return await request.json();
-  } catch {
-    return {};
-  }
 }

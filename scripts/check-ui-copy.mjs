@@ -1,9 +1,12 @@
 import { readFileSync } from "node:fs";
 
-const app = readFileSync("app/page.jsx", "utf8");
-const renderedStart = app.indexOf("return (\n    <main");
-const renderedApp = app.slice(renderedStart);
-const lowerApp = renderedApp.toLowerCase();
+const appPath = "app/kinloop-app.jsx";
+const app = readFileSync(appPath, "utf8");
+const renderedStart = app.indexOf("if (view === \"signin\")");
+const renderedApp = renderedStart >= 0 ? app.slice(renderedStart) : app;
+const lowerApp = renderedApp
+  .replaceAll(/\/api\/[a-z0-9/_-]+/gi, "/api/internal")
+  .toLowerCase();
 
 const bannedAppTerms = [
   "agentmail",
@@ -31,29 +34,32 @@ const bannedShopperPhrases = [
 
 const requiredAppCopy = [
   "Kinloop",
-  "Connected sources",
-  "Import connected sources",
-  "Upcoming birthdays",
-  "Gift opportunity",
-  "Reveal gift ideas",
-  "Why it fits",
-  "Approve",
-  "Call me 3 days before",
+  "Sign in",
+  "Continue on this device",
+  "Bring in your people",
+  "Synthetic data input",
+  "You're all set",
+  "Go to dashboard",
+  "Upcoming",
+  "Find",
+  "Why this fits",
+  "Approve this gift",
+  "d before",
   "Privacy and controls"
 ];
 
 const failures = [];
 
 for (const term of bannedAppTerms) {
-  if (lowerApp.includes(term)) failures.push(`app/page.jsx contains internal shopper-facing term: ${term}`);
+  if (lowerApp.includes(term)) failures.push(`${appPath} contains internal shopper-facing term: ${term}`);
 }
 
 for (const phrase of bannedShopperPhrases) {
-  if (lowerApp.includes(phrase)) failures.push(`app/page.jsx contains banned shopper-copy phrase: ${phrase}`);
+  if (lowerApp.includes(phrase)) failures.push(`${appPath} contains banned shopper-copy phrase: ${phrase}`);
 }
 
 for (const phrase of requiredAppCopy) {
-  if (!renderedApp.includes(phrase)) failures.push(`app/page.jsx missing expected shopper copy: ${phrase}`);
+  if (!renderedApp.includes(phrase)) failures.push(`${appPath} missing expected shopper copy: ${phrase}`);
 }
 
 if (failures.length > 0) {

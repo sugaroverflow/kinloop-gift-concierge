@@ -62,7 +62,7 @@ test("Shopify catalog fetch posts UCP MCP search request and normalizes products
     };
 
     const products = await fetchShopifyCatalogProducts({
-      input: "Source: kinloop_agentmail\n- Lead: Sarah mentioned pottery and espresso.",
+      input: "Source: kinloop_synthetic_source\n- Lead: Sarah mentioned pottery and espresso.",
       person: recipients[0],
       limit: 5,
       fetchImpl
@@ -204,7 +204,7 @@ test("product candidate loader uses Shopify Global Catalog by default when live 
 test("product search query strips AgentMail metadata and preserves shopper signal", () => {
   const query = buildProductSearchQuery({
     input: [
-      "Source: kinloop_agentmail",
+      "Source: kinloop_synthetic_source",
       "Recipient: sarah",
       "From: friend@example.com",
       "Subject: birthday",
@@ -214,7 +214,7 @@ test("product search query strips AgentMail metadata and preserves shopper signa
     person: recipients[0]
   });
 
-  assert.doesNotMatch(query, /kinloop_agentmail|friend@example.com|Recipient:/i);
+  assert.doesNotMatch(query, /kinloop_synthetic_source|friend@example.com|Recipient:/i);
   assert.match(query, /pottery, espresso, and hosting/i);
   assert.match(query, /birthday gift/i);
   assert.equal(query.length <= 240, true);

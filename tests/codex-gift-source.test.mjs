@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { generateFallbackGiftOptions, generateFallbackGiftSource, generateGiftSource } from "../lib/codex/gift-source.js";
+import { generateFallbackGiftOptions, generateFallbackGiftSource, generateGiftSource, normalizeGiftSourceRequest } from "../lib/codex/gift-source.js";
 import { POST } from "../app/api/codex/gift-source/route.js";
 
 test("local gift source returns shopper-facing structured candidate", () => {
@@ -23,6 +23,10 @@ test("Codex gift source uses product feed fallback when live Codex is not reques
   assert.equal(typeof result.candidate.risk, "string");
   assert.equal(result.options.length, 3);
   assert.equal(result.options[0].title, result.candidate.title);
+  assert.equal(result.options[0].rank, 1);
+  assert.equal(result.options[0].matchLabel, "Best match");
+  assert.equal(typeof result.options[0].productId, "string");
+  assert.equal(result.catalog.source, "mock_retailer_feed");
 });
 
 test("local gift source returns three approval-ready options", () => {
@@ -33,19 +37,20 @@ test("local gift source returns three approval-ready options", () => {
   assert.equal(options.length, 3);
   assert.equal(options.every((option) => typeof option.why === "string"), true);
   assert.equal(options.every((option) => option.fitScore >= 1 && option.fitScore <= 100), true);
+  assert.deepEqual(options.map((option) => option.matchLabel), ["Best match", "Strong match", "Safe backup"]);
 });
 
 test("local gift options do not expose AgentMail metadata as titles", () => {
   const options = generateFallbackGiftOptions({
     input: [
-      "Source: kinloop_agentmail",
+      "Source: kinloop_synthetic_source",
       "Recipient: sarah",
       "Subject: Sarah birthday idea",
       "- Lead: Sarah mentioned pottery and espresso."
     ].join("\n")
   });
 
-  assert.equal(options[0].title.includes("kinloop_agentmail"), false);
+  assert.equal(options[0].title.includes("kinloop_synthetic_source"), false);
   assert.equal(options[0].title.includes("Source:"), false);
 });
 
@@ -61,8 +66,64 @@ test("Codex gift source API route returns the same schema without credentials", 
 
   assert.equal(payload.ok, true);
   assert.equal(payload.source, "mock_retailer_feed");
+  assert.equal(payload.mode, "deterministic_fallback");
+  assert.equal(payload.catalog.candidateCount > 0, true);
+  assert.equal(payload.brief.personId, "sarah");
   assert.equal(typeof payload.candidate.caption, "string");
   assert.equal(typeof payload.candidate.why, "string");
   assert.equal(typeof payload.candidate.risk, "string");
   assert.equal(payload.options.length, 3);
+});
+
+test("gift source request normalizes rich source briefs", () => {
+  const request = normalizeGiftSourceRequest({
+    personId: "mateo",
+    brief: {
+      name: "Mateo Rivera",
+      relationship: "Colleague",
+      birthday: "June 19",
+      budget: "GBP 25-50",
+      clues: ["cycling", "desk coffee"],
+      avoid: ["alcohol"]
+    },
+    sourceSignal: {
+      sourceText: "Mateo mentioned a hand grinder and weekend rides.",
+      signal: {
+        personId: "mateo",
+        extracted: {
+          interests: ["coffee", "cycling"],
+          avoid: ["alcohol"],
+          giftLead: "Desk coffee situation is ridiculous."
+        }
+      }
+    }
+  });
+
+  assert.equal(request.person.id, "mateo");
+  assert.equal(request.brief.relationship, "Colleague");
+  assert.equal(request.brief.clues.includes("coffee"), true);
+  assert.equal(request.brief.avoid.includes("alcohol"), true);
+  assert.equal(request.sourceText.includes("Desk coffee"), true);
+});
+
+test("Codex gift source accepts rich brief and keeps catalog fallback", async () => {
+  const result = await generateGiftSource({
+    preferLive: false,
+    brief: {
+      personId: "priya",
+      name: "Priya Nandakumar",
+      relationship: "Sibling",
+      birthday: "July 4",
+      budget: "GBP 60-120",
+      clues: ["textiles", "design books"],
+      avoid: ["kitchen gadgets"],
+      sourceText: "Priya prefers objects with a story and handmade textiles."
+    }
+  });
+
+  assert.equal(result.mode, "deterministic_fallback");
+  assert.equal(result.brief.personId, "priya");
+  assert.equal(result.catalog.source, "mock_retailer_feed");
+  assert.equal(result.options.length, 3);
+  assert.equal(result.options.every((option) => option.productId), true);
 });

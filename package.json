@@ -13,12 +13,10 @@
     "check:browser": "playwright test",
     "browser:install": "playwright install chromium",
     "check:codex-live": "node scripts/check-codex-live.mjs",
-    "check:agentmail-live": "node scripts/check-agentmail-live.mjs",
-    "check:supabase-user": "node scripts/check-supabase-auth-user.mjs",
     "check:supabase-live": "node scripts/check-supabase-live.mjs",
     "check:supabase-live-records": "node scripts/check-supabase-live-records.mjs",
     "check:openclaw-live": "node scripts/check-openclaw-live.mjs",
-    "mcp:context": "node scripts/mcp-context-server.mjs",
+    "check:voice-live": "node scripts/check-voice-live.mjs",
     "reset:supabase-live": "node scripts/reset-supabase-live.mjs",
     "reset:local-state-instructions": "node scripts/reset-local-state.mjs",
     "test": "node --test tests/*.test.mjs"

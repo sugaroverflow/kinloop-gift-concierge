@@ -7,7 +7,7 @@ Product route, copy, and state guidance for Kinloop. Runtime architecture decisi
 Make Kinloop feel like a consumer gift concierge, not a marketplace clone, admin console, or technical demo panel.
 
 ```txt
-Import sources. Find the birthday. Reveal gift ideas. Approve one. Set the reminder.
+Sign in. Run synthetic data input. Review the next gift. Approve one. Set the reminder.
 ```
 
 ## Experience Model
@@ -15,12 +15,12 @@ Import sources. Find the birthday. Reveal gift ideas. Approve one. Set the remin
 The app should present one primary workflow:
 
 1. Sign in or continue on the current device.
-2. Import connected sources.
-3. Review discovered people and upcoming birthdays.
-4. Edit essentials: relationship, birthday, budget, address status, and notes.
-5. Reveal gift ideas.
-6. Approve one idea.
-7. Opt into a reminder call.
+2. Run synthetic data input.
+3. Watch the import move through input, scanning, and ready states.
+4. Land on the upcoming birthday dashboard.
+5. Review a read-only gift brief.
+6. Find one recommended gift plus quieter alternatives.
+7. Approve one idea in a modal and choose reminder timing.
 
 ## Copy Rules
 
@@ -28,15 +28,17 @@ Do not use internal implementation labels in the product UI. Product copy should
 
 Use product language:
 
-- `Connected sources`
-- `Import connected sources`
-- `Upcoming birthdays`
-- `Gift opportunity`
-- `Reveal gift ideas`
-- `Why it fits`
-- `Check first`
-- `Approve`
-- `Call me 3 days before`
+- `Sign in`
+- `Continue on this device`
+- `Bring in your people`
+- `Synthetic data input`
+- `You're all set`
+- `Go to dashboard`
+- `Upcoming`
+- `Find Sarah's gift`
+- `Why this fits`
+- `Approve this gift`
+- `3d before`
 - `Privacy and controls`
 
 Truth labels belong in docs, tests, and operator surfaces.
@@ -45,13 +47,13 @@ Truth labels belong in docs, tests, and operator surfaces.
 
 | Surface | Purpose | Primary state |
 |---|---|---|
-| Header | Product identity, account state, progress state | Signed-in user or current device |
-| Source panel | Import and summarize relationship context | Idle, importing, imported |
-| Priority panel | Show the next birthday that needs attention | Empty or prioritized person |
-| People rail | Navigate discovered people | Imported people, selected person |
-| Detail panel | Edit essentials and reveal gift ideas | Selected person, loading, error, ready |
-| Gift ideas | Compare and approve one idea | Suggested ideas and selected approval |
-| Reminder band | Opt into decision reminder | Enabled or paused |
+| Sign-in screen | Entry and local session start | Email link state or current-device session |
+| Source import screen | Run synthetic input, scan, and summarize readiness | Input, scanning, ready |
+| Header | Product identity, navigation, account state | Today, People, Approved |
+| Upcoming rail | Navigate discovered people | Imported people, selected person |
+| Gift brief | Present the next birthday and source-derived clues | Read-only selected person |
+| Recommendation | Present one chosen gift plus alternatives | Loading, ready, approved |
+| Approval modal | Confirm gift decision and reminder timing | Open, confirmed |
 | Footer | Quiet privacy and boundary copy | Always visible |
 
 ## Product State
@@ -61,11 +63,12 @@ The main app state should stay small:
 ```js
 {
   session,
+  view,
+  importStep,
   people,
   selectedPerson,
   giftIdeas,
-  approval,
-  reminderEnabled
+  approval
 }
 ```
 
@@ -75,7 +78,7 @@ Avoid product state for baskets, merchant handoffs, broad saved lists, marketpla
 
 - Light, crisp, product-native interface.
 - Warm relationship context balanced with precise controls.
-- A clear first viewport: sources, priority, people, and reveal path.
+- A clear first viewport: upcoming people, gift brief, and find-gift path.
 - No stock-photo dependency in the main visual identity.
 - No ecommerce-cart visual language.
 - No nested card stacks.
@@ -85,7 +88,7 @@ Avoid product state for baskets, merchant handoffs, broad saved lists, marketpla
 
 ### Source Import
 
-The import button should be clear and consumer-facing. Missing credentials or live integration failure should never expose stack traces in the UI.
+Source setup should feel like an onboarding step, not the main dashboard. Synthetic input should stay deterministic and never expose technical errors in shopper-facing copy.
 
 ### People And Birthdays
 
@@ -93,7 +96,7 @@ The people rail should make the next birthday obvious, but it should still let t
 
 ### Gift Reveal
 
-The reveal action should feel like a product action. The implementation may call Codex and Shopify-backed product candidates, but the app should simply present useful ideas.
+The reveal action should feel like a product action. The implementation may call Codex and product candidates, but the app should simply present useful ideas.
 
 ### Gift Ideas
 
@@ -104,12 +107,12 @@ Each option should show:
 - delivery note
 - why it fits
 - check-first risk
-- fit score
+- match label
 - approval button
 
 ### Reminder
 
-Reminder opt-in should be explicit. It records preference; live channel delivery remains credentialed and allowlisted.
+Reminder timing belongs in the approval modal. It records preference; live channel delivery remains credentialed and allowlisted.
 
 ## Quality Bar
 

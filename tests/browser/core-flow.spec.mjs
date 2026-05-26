@@ -7,8 +7,12 @@ test.beforeAll(async () => {
   await mkdir(screenshotDir, { recursive: true });
 });
 
-test("Kinloop imports sources, reveals gift ideas, approves, and enables reminder", async ({ page }) => {
+test("Kinloop follows sign-in, source import, dashboard, approval, and reminder flow", async ({ page }) => {
+  let giftSourceRequest = null;
+  let reminderCalled = false;
+
   await page.route("**/api/gift-source", async (route) => {
+    giftSourceRequest = JSON.parse(route.request().postData() || "{}");
     await route.fulfill({
       status: 200,
       contentType: "application/json",
@@ -17,7 +21,8 @@ test("Kinloop imports sources, reveals gift ideas, approves, and enables reminde
         source: "mock_retailer_feed",
         options: [
           {
-            id: "studio-class",
+            productId: "studio-class",
+            rank: 1,
             title: "Pottery Studio Voucher",
             caption: "A flexible class pass for a local ceramics studio.",
             why: "Matches pottery clues and avoids shipping pressure.",
@@ -28,7 +33,20 @@ test("Kinloop imports sources, reveals gift ideas, approves, and enables reminde
             fitScore: 93
           },
           {
-            id: "espresso-kit",
+            productId: "serving-bowl",
+            rank: 2,
+            title: "Hand-Thrown Serving Bowl",
+            caption: "A glazed serving bowl from an independent ceramicist.",
+            why: "Fits ceramics and hosting signals.",
+            risk: "Color preference matters.",
+            priceRange: "GBP 72.00",
+            deliveryNote: "Arrives by May 31",
+            sellerSignal: "Moss Kiln",
+            fitScore: 87
+          },
+          {
+            productId: "espresso-kit",
+            rank: 3,
             title: "Espresso Tasting Kit",
             caption: "Small-batch beans with tasting notes.",
             why: "Matches espresso and hosting clues.",
@@ -36,17 +54,6 @@ test("Kinloop imports sources, reveals gift ideas, approves, and enables reminde
             priceRange: "GBP 64.00",
             deliveryNote: "Arrives by May 30",
             sellerSignal: "Tarra Coffee Co.",
-            fitScore: 87
-          },
-          {
-            id: "linen-journal",
-            title: "Linen Journal Set",
-            caption: "Lay-flat notebooks with archival paper.",
-            why: "Useful and personal without being extravagant.",
-            risk: "Pair it with a handwritten note.",
-            priceRange: "GBP 38.00",
-            deliveryNote: "Arrives by May 29",
-            sellerSignal: "Cedar Paper House",
             fitScore: 81
           }
         ]
@@ -54,26 +61,59 @@ test("Kinloop imports sources, reveals gift ideas, approves, and enables reminde
     });
   });
 
-  await page.goto("/");
+  await page.route("**/api/openclaw/reminder", async (route) => {
+    reminderCalled = true;
+    await route.fulfill({
+      status: 200,
+      contentType: "application/json",
+      body: JSON.stringify({
+        ok: true,
+        mode: "preview",
+        target: "kinloop-recipient",
+        productSource: "mock_retailer_feed",
+        message: { mode: "preview", payload: { recipientName: "Sarah" } },
+        voice: null
+      })
+    });
+  });
 
-  await expect(page.getByRole("heading", { name: "Birthdays, clues, and gift timing in one place." })).toBeVisible();
-  await page.screenshot({ path: `${screenshotDir}/home.png`, fullPage: true });
+  await page.goto("/sign-in");
+  await page.evaluate(() => window.localStorage.clear());
 
-  await page.getByRole("button", { name: "Import connected sources" }).click();
-  await expect(page.getByText("4 people found.")).toBeVisible();
-  await expect(page.getByRole("button", { name: /Sarah Chen/ })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Sign in" })).toBeVisible();
+  await page.screenshot({ path: `${screenshotDir}/sign-in.png`, fullPage: true });
 
-  await page.getByRole("button", { name: /Sarah Chen/ }).click();
-  await page.getByLabel("Budget").fill("GBP 50-90");
-  await page.getByRole("button", { name: "Reveal gift ideas" }).click();
+  await page.getByRole("button", { name: "Continue on this device" }).click();
+  await expect(page.getByRole("heading", { name: "Bring in your people" })).toBeVisible();
+
+  await page.getByRole("button", { name: "Synthetic data input" }).click();
+  await expect(page.getByText("Building your loop...")).toBeVisible();
+  await expect(page.getByRole("heading", { name: "You're all set" })).toBeVisible();
+  await expect(page.getByText("Synthetic JSON sample")).toBeVisible();
+  await page.screenshot({ path: `${screenshotDir}/import-ready.png`, fullPage: true });
+
+  await page.getByRole("button", { name: "Go to dashboard" }).click();
+  await expect(page.getByRole("heading", { name: "Sarah Chen" })).toBeVisible();
+  await expect(page.getByText("Thoughtful and useful, but not extravagant.")).toBeVisible();
+
+  await page.getByRole("button", { name: "Find Sarah's gift" }).click();
   await expect(page.getByRole("heading", { name: "Pottery Studio Voucher" })).toBeVisible();
-  await page.screenshot({ path: `${screenshotDir}/ideas.png`, fullPage: true });
+  await expect(page.getByText("Best match")).toBeVisible();
+  expect(giftSourceRequest?.brief?.personId).toBe("sarah");
+  expect(giftSourceRequest?.sourceSignal?.sourceText).toContain("pottery");
+  await page.screenshot({ path: `${screenshotDir}/recommendation.png`, fullPage: true });
 
-  await page.getByRole("button", { name: "Approve" }).first().click();
-  await expect(page.getByRole("button", { name: "Approved" })).toBeVisible();
+  await page.getByRole("button", { name: "Approve this gift" }).click();
+  const approvalDialog = page.getByRole("dialog", { name: "Pottery Studio Voucher" });
+  await expect(approvalDialog.getByRole("heading", { name: "Pottery Studio Voucher" })).toBeVisible();
+  await approvalDialog.getByRole("button", { name: "3d before" }).click();
+  await approvalDialog.getByRole("button", { name: "Approve gift" }).click();
   await expect(page.getByText("Pottery Studio Voucher approved.")).toBeVisible();
+  expect(reminderCalled).toBe(true);
 
-  await page.getByLabel("Call me 3 days before").check();
-  await expect(page.getByText("Reminder call enabled.")).toBeVisible();
+  await page.getByRole("navigation", { name: "Kinloop" }).getByRole("button", { name: "Approved" }).click();
+  await expect(page.getByRole("heading", { name: "Gift decisions" })).toBeVisible();
+  await expect(page.getByText("Text 3 days before")).toBeVisible();
+  await expect(page.getByText("No purchase or payment happens in Kinloop.", { exact: true })).toBeVisible();
   await page.screenshot({ path: `${screenshotDir}/approved.png`, fullPage: true });
 });

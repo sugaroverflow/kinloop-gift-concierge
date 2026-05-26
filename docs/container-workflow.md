@@ -16,6 +16,8 @@ Run one command:
 scripts/container-run.sh npm run check
 ```
 
+The helper scripts source `.env.local` before invoking Docker Compose. Keep credentials in `.env.local`; do not move secrets into compose files, docs, or tracked source.
+
 Start the app:
 
 ```txt
