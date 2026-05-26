@@ -10,6 +10,7 @@ import { recordKinloopApproval } from "../lib/supabase/repository";
 const importSteps = ["connect", "scanning", "complete"];
 const stepLabels = { connect: "Input", scanning: "Scanning", complete: "Ready" };
 const syntheticSource = { id: "synthetic", name: "Synthetic JSON sample" };
+const birdCircleLogoSrc = "/kinloop-bird-circle.png";
 
 export default function KinloopApp({ initialView = "dashboard" }) {
   const [state, setState] = useState(initialKinloopState);
@@ -968,16 +969,15 @@ function Fact({ label, value }) {
 
 function Avatar({ large = false, name, tone = "" }) {
   const initials = name.split(" ").map((part) => part[0]).join("").slice(0, 2);
-  return <span className={large ? `avatar large tone-${tone}` : `avatar tone-${tone}`}>{initials}</span>;
+  return (
+    <span className={large ? `avatar large tone-${tone}` : `avatar tone-${tone}`}>{initials}</span>
+  );
 }
 
 function KinloopMark({ size = "default" }) {
   return (
     <span className={size === "small" ? "kinloop-mark small" : "kinloop-mark"} aria-hidden="true">
-      <svg viewBox="0 0 42 42" role="img">
-        <circle cx="21" cy="21" r="17" />
-        <path d="M13 22c5-10 13-10 16 0M13 22c5 10 13 10 16 0" />
-      </svg>
+      <img src={birdCircleLogoSrc} alt="" decoding="async" />
     </span>
   );
 }
