@@ -27,7 +27,7 @@ export default function KinloopCockpit() {
   const [matchingError, setMatchingError] = useState("");
   const [toast, setToast] = useState("");
 
-  const options = state.codexRun.options.length ? state.codexRun.options : gifts.map(giftToOption);
+  const options = state.codexRun.options.length ? state.codexRun.options : gifts.slice(0, 3).map(giftToOption);
   const approvedOption = options.find((option) => option.id === state.approval?.giftId);
   const workflowState = state.approval ? "approved" : state.codexRun.status === "complete" ? "ready" : state.signal ? "signal" : "waiting";
 
@@ -481,7 +481,7 @@ function normalizeOptions(rawOptions) {
 
   if (prepared.length >= 3) return prepared;
 
-  const fill = gifts.map(giftToOption);
+  const fill = gifts.slice(0, 3).map(giftToOption);
   while (prepared.length < 3) {
     prepared.push(fill[prepared.length]);
   }

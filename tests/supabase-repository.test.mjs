@@ -14,7 +14,7 @@ test("birthday repository falls back to JSON data without Supabase client", asyn
 
   assert.equal(result.mode, "local");
   assert.equal(result.people.length > 0, true);
-  assert.equal(result.gifts.length, 3);
+  assert.equal(result.gifts.length >= 10, true);
 });
 
 test("birthday repository maps Supabase rows into UI-shaped data", async () => {

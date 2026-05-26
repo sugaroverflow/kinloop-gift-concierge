@@ -3,7 +3,7 @@ import { readFileSync } from "node:fs";
 const files = [
   "app/page.jsx",
   "data/kinloop/people.json",
-  "data/kinloop/catalog.json"
+  "data/kinloop/mock-product-feed.json"
 ];
 
 const bannedPhrases = [

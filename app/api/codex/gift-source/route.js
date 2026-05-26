@@ -11,6 +11,7 @@ export async function POST(request) {
   return Response.json({
     ok: true,
     source: result.source,
+    productSource: result.productSource || result.source,
     fallbackReason: result.fallbackReason || null,
     candidate: result.candidate,
     options: result.options || [result.candidate].filter(Boolean)

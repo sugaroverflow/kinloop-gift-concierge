@@ -1,0 +1,272 @@
+{
+  "source": "mock_retailer_feed",
+  "fallbackFor": "shopify_ucp_catalog_mcp",
+  "merchant": "Loop & Lark",
+  "updatedAt": "2026-05-26T09:00:00.000Z",
+  "products": [
+    {
+      "id": "pottery-voucher",
+      "name": "Pottery Studio Voucher",
+      "caption": "A flexible class pass for a local ceramics studio.",
+      "price": 58,
+      "displayPrice": "GBP 58.00",
+      "delivery": "Digital delivery today",
+      "seller": "Clay North Studio",
+      "returns": "Flexible booking",
+      "match": "Experience",
+      "score": 89,
+      "photo": "https://images.pexels.com/photos/18267464/pexels-photo-18267464.jpeg?auto=compress&cs=tinysrgb&w=900&h=720&fit=crop",
+      "why": "Turns a pottery signal into a low-risk experience with flexible timing.",
+      "consider": "Less tactile than a wrapped item.",
+      "basedOn": ["pottery", "ceramics", "studio", "class", "handmade"],
+      "catalog": {
+        "sku": "CLAY-NORTH-CLASS-PASS",
+        "category": "Experiences",
+        "inventoryStatus": "Available",
+        "merchantRating": 4.8
+      }
+    },
+    {
+      "id": "hand-thrown-serving-bowl",
+      "name": "Hand-Thrown Serving Bowl",
+      "caption": "A glazed serving bowl from an independent ceramicist.",
+      "price": 72,
+      "displayPrice": "GBP 72.00",
+      "delivery": "Arrives by May 31",
+      "seller": "Moss Kiln",
+      "returns": "14-day returns",
+      "match": "Object",
+      "score": 86,
+      "photo": "https://images.pexels.com/photos/6270482/pexels-photo-6270482.jpeg?auto=compress&cs=tinysrgb&w=900&h=720&fit=crop",
+      "why": "Feels personal for someone who likes ceramics and hosting.",
+      "consider": "Confirm color preferences before choosing.",
+      "basedOn": ["pottery", "ceramics", "hosting", "table", "serving"],
+      "catalog": {
+        "sku": "MOSS-KILN-SERVING-BOWL",
+        "category": "Home",
+        "inventoryStatus": "Limited",
+        "merchantRating": 4.9
+      }
+    },
+    {
+      "id": "espresso-kit",
+      "name": "Espresso Tasting Kit",
+      "caption": "A boxed tasting set with small-batch beans and brew notes.",
+      "price": 64,
+      "displayPrice": "GBP 64.00",
+      "delivery": "Arrives by May 30",
+      "seller": "Tarra Coffee Co.",
+      "returns": "30-day returns",
+      "match": "Taste",
+      "score": 82,
+      "photo": "https://images.pexels.com/photos/1695052/pexels-photo-1695052.jpeg?auto=compress&cs=tinysrgb&w=900&h=720&fit=crop",
+      "why": "Fits espresso and hosting signals, with delivery inside the birthday window.",
+      "consider": "May overlap with something they already buy.",
+      "basedOn": ["coffee", "espresso", "beans", "hosting", "morning"],
+      "catalog": {
+        "sku": "TARRA-ESPRESSO-TASTING-6",
+        "category": "Coffee",
+        "inventoryStatus": "Available",
+        "merchantRating": 4.7
+      }
+    },
+    {
+      "id": "linen-journal-set",
+      "name": "Linen Journal Set",
+      "caption": "Two lay-flat linen notebooks with archival paper.",
+      "price": 38,
+      "displayPrice": "GBP 38.00",
+      "delivery": "Arrives by May 29",
+      "seller": "Cedar Paper House",
+      "returns": "Returns accepted",
+      "match": "Ritual",
+      "score": 80,
+      "photo": "https://images.pexels.com/photos/6373305/pexels-photo-6373305.jpeg?auto=compress&cs=tinysrgb&w=900&h=720&fit=crop",
+      "why": "Matches journaling and morning-pages clues without feeling extravagant.",
+      "consider": "Stationery can feel small unless paired with a note.",
+      "basedOn": ["journal", "notebook", "stationery", "paper", "writing"],
+      "catalog": {
+        "sku": "CEDAR-LINEN-JOURNAL-DUO",
+        "category": "Stationery",
+        "inventoryStatus": "Available",
+        "merchantRating": 4.6
+      }
+    },
+    {
+      "id": "native-herb-planter",
+      "name": "Native Herb Planter Kit",
+      "caption": "A balcony-friendly herb planter with native pollinator seeds.",
+      "price": 52,
+      "displayPrice": "GBP 52.00",
+      "delivery": "Arrives by June 1",
+      "seller": "Pollinator Supply",
+      "returns": "30-day returns",
+      "match": "Garden",
+      "score": 81,
+      "photo": "https://images.pexels.com/photos/4505166/pexels-photo-4505166.jpeg?auto=compress&cs=tinysrgb&w=900&h=720&fit=crop",
+      "why": "Connects garden, herbs, and small-space signals.",
+      "consider": "Avoid if they already have too many plants.",
+      "basedOn": ["garden", "herbs", "plants", "balcony", "pollinators"],
+      "catalog": {
+        "sku": "POLLINATOR-HERB-PLANTER",
+        "category": "Garden",
+        "inventoryStatus": "Available",
+        "merchantRating": 4.5
+      }
+    },
+    {
+      "id": "textile-market-throw",
+      "name": "Small-Batch Textile Throw",
+      "caption": "A woven cotton throw from a fair-trade textile studio.",
+      "price": 74,
+      "displayPrice": "GBP 74.00",
+      "delivery": "Arrives by June 2",
+      "seller": "Kora Textile Works",
+      "returns": "14-day returns",
+      "match": "Design",
+      "score": 84,
+      "photo": "https://images.pexels.com/photos/6846319/pexels-photo-6846319.jpeg?auto=compress&cs=tinysrgb&w=900&h=720&fit=crop",
+      "why": "Good for design-aware people who like craft and domestic space.",
+      "consider": "Pattern taste is personal.",
+      "basedOn": ["textile", "fabric", "design", "home", "craft"],
+      "catalog": {
+        "sku": "KORA-WOVEN-COTTON-THROW",
+        "category": "Home",
+        "inventoryStatus": "Available",
+        "merchantRating": 4.8
+      }
+    },
+    {
+      "id": "hosting-care",
+      "name": "Cozy Hosting Bundle",
+      "caption": "A warm table-setting bundle for relaxed dinner hosting.",
+      "price": 46,
+      "displayPrice": "GBP 46.00",
+      "delivery": "Arrives by May 31",
+      "seller": "Hearth & Table",
+      "returns": "Returns accepted",
+      "match": "Hosting",
+      "score": 74,
+      "photo": "https://images.pexels.com/photos/6148455/pexels-photo-6148455.jpeg?auto=compress&cs=tinysrgb&w=900&h=720&fit=crop",
+      "why": "Connects to cozy hosting without making sensitive assumptions.",
+      "consider": "Could feel generic if not paired with a personal note.",
+      "basedOn": ["hosting", "dinner", "table", "candles", "home"],
+      "catalog": {
+        "sku": "HEARTH-TABLE-HOSTING-SET",
+        "category": "Home",
+        "inventoryStatus": "Available",
+        "merchantRating": 4.6
+      }
+    },
+    {
+      "id": "bike-route-pack",
+      "name": "Weekend Bike Route Pack",
+      "caption": "A compact handlebar pouch with a printed local route map.",
+      "price": 49,
+      "displayPrice": "GBP 49.00",
+      "delivery": "Arrives by May 30",
+      "seller": "Riverline Cycles",
+      "returns": "30-day returns",
+      "match": "Outdoors",
+      "score": 79,
+      "photo": "https://images.pexels.com/photos/5465175/pexels-photo-5465175.jpeg?auto=compress&cs=tinysrgb&w=900&h=720&fit=crop",
+      "why": "Useful for someone mentioning rides, routes, and weekend plans.",
+      "consider": "Check bike setup before buying accessories.",
+      "basedOn": ["bike", "cycling", "route", "river", "weekend"],
+      "catalog": {
+        "sku": "RIVERLINE-ROUTE-PACK",
+        "category": "Outdoors",
+        "inventoryStatus": "Available",
+        "merchantRating": 4.4
+      }
+    },
+    {
+      "id": "trail-picnic-kit",
+      "name": "Trail Picnic Kit",
+      "caption": "A lightweight picnic kit for hikes and outdoor birthdays.",
+      "price": 57,
+      "displayPrice": "GBP 57.00",
+      "delivery": "Arrives by May 31",
+      "seller": "North Ridge Goods",
+      "returns": "30-day returns",
+      "match": "Outdoors",
+      "score": 77,
+      "photo": "https://images.pexels.com/photos/2074166/pexels-photo-2074166.jpeg?auto=compress&cs=tinysrgb&w=900&h=720&fit=crop",
+      "why": "Matches hiking and low-pressure outdoor celebration clues.",
+      "consider": "Less useful for someone who avoids gear.",
+      "basedOn": ["hike", "trail", "picnic", "outdoors", "mountain"],
+      "catalog": {
+        "sku": "NORTH-RIDGE-PICNIC-KIT",
+        "category": "Outdoors",
+        "inventoryStatus": "Available",
+        "merchantRating": 4.5
+      }
+    },
+    {
+      "id": "independent-bookshop-credit",
+      "name": "Independent Bookshop Credit",
+      "caption": "A digital credit for a neighborhood bookshop.",
+      "price": 50,
+      "displayPrice": "GBP 50.00",
+      "delivery": "Digital delivery today",
+      "seller": "Chapter House Books",
+      "returns": "Store credit",
+      "match": "Reading",
+      "score": 78,
+      "photo": "https://images.pexels.com/photos/3771087/pexels-photo-3771087.jpeg?auto=compress&cs=tinysrgb&w=900&h=720&fit=crop",
+      "why": "Flexible when messages mention reading, essays, or book club.",
+      "consider": "Less specific unless paired with a recommendation.",
+      "basedOn": ["book", "reading", "essays", "book club", "library"],
+      "catalog": {
+        "sku": "CHAPTER-HOUSE-CREDIT-50",
+        "category": "Books",
+        "inventoryStatus": "Available",
+        "merchantRating": 4.7
+      }
+    },
+    {
+      "id": "community-care-snack-box",
+      "name": "Community Care Snack Box",
+      "caption": "A shareable snack box suitable for meetings and volunteer nights.",
+      "price": 44,
+      "displayPrice": "GBP 44.00",
+      "delivery": "Arrives by May 29",
+      "seller": "Gather Pantry",
+      "returns": "Not returnable",
+      "match": "Care",
+      "score": 76,
+      "photo": "https://images.pexels.com/photos/5946083/pexels-photo-5946083.jpeg?auto=compress&cs=tinysrgb&w=900&h=720&fit=crop",
+      "why": "Supports someone organizing community work without making the gift performative.",
+      "consider": "Check dietary preferences.",
+      "basedOn": ["community", "volunteer", "meeting", "snacks", "fundraiser"],
+      "catalog": {
+        "sku": "GATHER-PANTRY-SNACK-BOX",
+        "category": "Food",
+        "inventoryStatus": "Available",
+        "merchantRating": 4.6
+      }
+    },
+    {
+      "id": "desk-coffee-upgrade",
+      "name": "Desk Coffee Upgrade",
+      "caption": "A compact pour-over set for a better desk coffee ritual.",
+      "price": 63,
+      "displayPrice": "GBP 63.00",
+      "delivery": "Arrives by May 30",
+      "seller": "Kettle & Bloom",
+      "returns": "30-day returns",
+      "match": "Workday",
+      "score": 75,
+      "photo": "https://images.pexels.com/photos/302899/pexels-photo-302899.jpeg?auto=compress&cs=tinysrgb&w=900&h=720&fit=crop",
+      "why": "Useful when messages mention office rituals, coffee, or desk upgrades.",
+      "consider": "Avoid if they prefer espresso machines only.",
+      "basedOn": ["coffee", "desk", "office", "pour-over", "work"],
+      "catalog": {
+        "sku": "KETTLE-BLOOM-DESK-POUROVER",
+        "category": "Coffee",
+        "inventoryStatus": "Available",
+        "merchantRating": 4.4
+      }
+    }
+  ]
+}

@@ -34,6 +34,7 @@ open Kinloop
 | P0 | Kinloop-only repo | Root docs, scripts, data labels, and tests describe only the Kinloop vision | `scripts/container-run.sh npm run check:docs`; repo text scan |
 | P0 | Product cockpit | Main app presents one focused Sarah flow with signal intake, Codex transformation, options, approval, and audit trail | Browser smoke and manual recording pass |
 | P0 | Codex options schema | Codex route returns three structured gift options from one imported signal | Node tests for schema; browser flow |
+| P0 | Product source | Product candidates come from Shopify UCP Catalog MCP when configured and from mock retailer feed fallback otherwise | `scripts/container-run.sh npm run test -- tests/product-source.test.mjs` |
 | P0 | AgentMail live check | Credentialed script verifies the latest inbox message can be listed/fetched and normalized | `scripts/container-run.sh npm run check:agentmail-live` |
 | P0 | Approval memory | Persist imported signal, generated options, approval, and audit event with approval-first names | Repository tests and Supabase live check |
 | P0 | Final full check | Default checks and browser smoke pass from the submission state | `scripts/container-run.sh npm run check`; `scripts/container-run.sh npm run check:browser` |
@@ -48,9 +49,9 @@ Do not add these to the submission path:
 - real purchase execution
 - payment processing
 - fulfillment
-- Shopify merchant integration
+- Shopify checkout, cart, or merchant handoff
 - continuous inbox indexing
-- broad catalog search
+- unbounded broad catalog browsing
 - autonomous purchasing
 - runtime swarms
 - external MCP ownership of approval state

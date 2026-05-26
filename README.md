@@ -6,7 +6,7 @@ Kinloop is a Codex-powered gift approval cockpit.
 Automate the gift search. Keep the human in the loop.
 ```
 
-The app gives an agent-owned inbox to gift hints, imports the latest relationship signal from `kinloop-agent@agentmail.to`, asks Codex to convert that messy signal into three structured gift options, and records the human approval.
+The app gives an agent-owned inbox to gift hints, imports the latest relationship signal from `kinloop-agent@agentmail.to`, searches a Shopify UCP Catalog MCP product source with a mock retailer feed fallback, asks Codex to convert that messy signal into structured gift options, and records the human approval.
 
 ## What It Proves
 
@@ -17,6 +17,7 @@ The app gives an agent-owned inbox to gift hints, imports the latest relationshi
 | Data persistence | Supabase product memory with local resilience for recording continuity |
 | Meaningful tests | Docs guard, UI copy guard, unit/integration tests, build, and browser smoke |
 | Programmatic Codex | `@openai/codex-sdk` powers `/api/codex/gift-source` |
+| Product source | Shopify UCP Catalog MCP when configured, mock retailer feed fallback for tests and recording continuity |
 | Creativity | AgentMail inbox plus Codex Signal Studio creates a real signal-to-decision pipeline |
 | Communication | `docs/recording-script.md` gives the five-minute recording structure |
 

@@ -13,13 +13,13 @@ test("local gift source returns shopper-facing structured candidate", () => {
   assert.equal(candidate.fitScore >= 1 && candidate.fitScore <= 100, true);
 });
 
-test("Codex gift source uses local resilience when live Codex is not requested", async () => {
+test("Codex gift source uses product feed fallback when live Codex is not requested", async () => {
   const result = await generateGiftSource({
     input: "Espresso tasting kit from an independent seller",
     preferLive: false
   });
 
-  assert.equal(result.source, "local_resilience");
+  assert.equal(result.source, "mock_retailer_feed");
   assert.equal(typeof result.candidate.risk, "string");
   assert.equal(result.options.length, 3);
   assert.equal(result.options[0].title, result.candidate.title);
@@ -60,7 +60,7 @@ test("Codex gift source API route returns the same schema without credentials", 
   const payload = await response.json();
 
   assert.equal(payload.ok, true);
-  assert.equal(payload.source, "local_resilience");
+  assert.equal(payload.source, "mock_retailer_feed");
   assert.equal(typeof payload.candidate.caption, "string");
   assert.equal(typeof payload.candidate.why, "string");
   assert.equal(typeof payload.candidate.risk, "string");
