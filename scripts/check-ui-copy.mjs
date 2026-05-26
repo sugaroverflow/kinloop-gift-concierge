@@ -1,49 +1,37 @@
 import { readFileSync } from "node:fs";
 
-const files = [
-  "app/page.jsx",
-  "data/kinloop/people.json",
-  "data/kinloop/catalog.json"
+const app = readFileSync("app/page.jsx", "utf8").toLowerCase();
+
+const banned = [
+  "agentmail",
+  "codex",
+  "mcp",
+  "openclaw",
+  "sdk",
+  "audit",
+  "signal",
+  "human in the loop",
+  "demo",
+  "fixture"
 ];
 
-const bannedPhrases = [
-  "cart",
-  "no real charge",
-  "powered by codex",
-  "sync with supabase",
-  "test mode",
-  "recording mode",
-  "local mode"
-];
-
-const requiredAppCopy = [
-  "Kinloop",
-  "AgentMail inbox",
-  "Latest gift hint",
-  "Gift matching",
-  "Generate gift options",
-  "Why it fits",
-  "Watch-outs",
-  "Approve gift",
-  "Audit trail",
-  "Account"
+const required = [
+  "source",
+  "clue",
+  "people",
+  "birthdays",
+  "gift ideas",
+  "reveal",
+  "approve",
+  "reminder",
+  "connected sources"
 ];
 
 const failures = [];
+for (const word of banned) if (app.includes(word)) failures.push(`banned main UI term found: ${word}`);
+for (const word of required) if (!app.includes(word)) failures.push(`required product term missing: ${word}`);
 
-for (const file of files) {
-  const content = readFileSync(file, "utf8").toLowerCase();
-  for (const phrase of bannedPhrases) {
-    if (content.includes(phrase)) failures.push(`${file} contains banned shopper-copy phrase: ${phrase}`);
-  }
-}
-
-const app = readFileSync("app/page.jsx", "utf8");
-for (const phrase of requiredAppCopy) {
-  if (!app.includes(phrase)) failures.push(`app/page.jsx missing expected shopper copy: ${phrase}`);
-}
-
-if (failures.length > 0) {
+if (failures.length) {
   console.error(failures.join("\n"));
   process.exit(1);
 }
