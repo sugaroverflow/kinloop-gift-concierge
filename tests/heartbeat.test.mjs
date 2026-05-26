@@ -1,9 +1,9 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { createSarahHeartbeatFixture, evaluateReminder, evaluateReminders } from "../lib/heartbeat/evaluate-reminders.js";
+import { createHeartbeatFixture, evaluateReminder, evaluateReminders } from "../lib/heartbeat/evaluate-reminders.js";
 
 test("heartbeat evaluation transitions reminder to t_3_due", () => {
-  const reminder = createSarahHeartbeatFixture();
+  const reminder = createHeartbeatFixture();
   const result = evaluateReminder(reminder, new Date("2026-05-30T10:00:00Z"));
 
   assert.equal(result.changed, true);
@@ -14,7 +14,7 @@ test("heartbeat evaluation transitions reminder to t_3_due", () => {
 
 test("heartbeat evaluation keeps approved reminders unchanged", () => {
   const result = evaluateReminder({
-    ...createSarahHeartbeatFixture(),
+    ...createHeartbeatFixture(),
     approved: true,
     state: "brief_ready"
   }, new Date("2026-05-30T10:00:00Z"));
@@ -26,9 +26,9 @@ test("heartbeat evaluation keeps approved reminders unchanged", () => {
 
 test("heartbeat evaluation batches changed and unchanged reminders", () => {
   const result = evaluateReminders([
-    createSarahHeartbeatFixture(),
+    createHeartbeatFixture(),
     {
-      ...createSarahHeartbeatFixture(),
+      ...createHeartbeatFixture(),
       id: "already-approved",
       approved: true,
       state: "approved"

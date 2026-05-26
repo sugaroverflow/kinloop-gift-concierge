@@ -25,13 +25,13 @@ Kinloop is a gift concierge for people who care about birthdays but do not want 
 
 | Area | Kinloop path |
 |---|---|
-| Product flow | Synthetic source import to gift approval and reminder opt-in |
-| Login / authorization | Supabase auth surface with local fallback for offline development |
-| Data persistence | Supabase product memory plus browser state fallback |
+| Product flow | Synthetic email source import to gift approval and reminder opt-in |
+| Login / authorization | Supabase email/password auth with explicit current-device fallback for offline development |
+| Data persistence | Supabase product memory for imported summaries, approvals, and reminder timing plus browser state fallback |
 | Tests | `npm run check` covers docs, UI copy, unit/integration tests, and build; browser smoke runs separately with `npm run check:browser` |
-| Programmatic Codex | `@openai/codex-sdk` powers structured gift idea generation |
-| Product source | Shopify UCP Catalog MCP when configured, mock retailer feed fallback for deterministic runs |
-| Reminder channels | OpenClaw preview/send boundary and optional Twilio voice reminder path |
+| Programmatic Codex | `@openai/codex-sdk` powers product candidate curation, source-to-brief analysis, and structured gift idea generation |
+| Product source | Shopify UCP Catalog MCP for live candidates, mock retailer feed fallback when live discovery or Codex curation cannot produce usable options |
+| Reminder channels | OpenClaw preview/send boundary for Discord reminders |
 
 ## Product Flow
 
@@ -67,13 +67,13 @@ scripts/container-run.sh npm run check:browser
 Start the app:
 
 ```txt
-docker compose run -d --service-ports --name codex_project-dev app npm run dev
+npm run dev:docker
 ```
 
 Stop it:
 
 ```txt
-docker stop codex_project-dev
+npm run stop:docker
 ```
 
 ## Live Codex Path
@@ -99,7 +99,7 @@ scripts/container-run.sh npm run check:codex-live
 
 ## Source And Product Paths
 
-Kinloop uses `data/kinloop/synthetic-source-sample.json` as the canonical local source fixture. This is the default app path for repeatable local runs.
+Kinloop uses `data/kinloop/synthetic-source-sample.json` as the canonical local source fixture. The app derives people, relationship summaries, clues, and Codex-ready source text from that fixture instead of a separate static people seed.
 
 ```txt
 SHOPIFY_UCP_MCP_ENDPOINT=https://catalog.shopify.com/api/ucp/mcp
@@ -110,7 +110,6 @@ Optional integration checks:
 ```txt
 scripts/container-run.sh npm run check:supabase-live
 scripts/container-run.sh npm run check:openclaw-live
-scripts/container-run.sh npm run check:voice-live
 ```
 
 For a real allowlisted OpenClaw CLI send, set:

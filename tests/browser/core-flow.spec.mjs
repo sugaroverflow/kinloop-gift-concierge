@@ -71,8 +71,7 @@ test("Kinloop follows sign-in, source import, dashboard, approval, and reminder 
         mode: "preview",
         target: "kinloop-recipient",
         productSource: "mock_retailer_feed",
-        message: { mode: "preview", payload: { recipientName: "Sarah" } },
-        voice: null
+        message: { mode: "preview", payload: { recipientName: "Elara" } }
       })
     });
   });
@@ -85,6 +84,15 @@ test("Kinloop follows sign-in, source import, dashboard, approval, and reminder 
 
   await page.getByRole("button", { name: "Continue on this device" }).click();
   await expect(page.getByRole("heading", { name: "Bring in your people" })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Gmail" })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Obsidian" })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "iMessage" })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "WhatsApp" })).toBeVisible();
+  await expect(page.getByText("Coming soon")).toHaveCount(4);
+  await expect(page.getByText("Elara Moonwell")).toBeVisible();
+  await expect(page.getByRole("link", { name: "elara.moonwell@gmail.com" })).toBeVisible();
+  await expect(page.getByText("Torin Oakenspire")).toBeVisible();
+  await expect(page.getByRole("link", { name: "torin.oakenspire@gmail.com" })).toBeVisible();
 
   await page.getByRole("button", { name: "Synthetic data input" }).click();
   await expect(page.getByText("Building your loop...")).toBeVisible();
@@ -93,10 +101,10 @@ test("Kinloop follows sign-in, source import, dashboard, approval, and reminder 
   await page.screenshot({ path: `${screenshotDir}/import-ready.png`, fullPage: true });
 
   await page.getByRole("button", { name: "Go to dashboard" }).click();
-  await expect(page.getByRole("heading", { name: "Sarah Chen" })).toBeVisible();
-  await expect(page.getByText("Thoughtful and useful, but not extravagant.")).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Elara Moonwell" })).toBeVisible();
+  await expect(page.getByText(/pottery|espresso|hosting/i).first()).toBeVisible();
 
-  await page.getByRole("button", { name: "Find Sarah's gift" }).click();
+  await page.getByRole("button", { name: "Find Elara's gift" }).click();
   await expect(page.getByRole("heading", { name: "Pottery Studio Voucher" })).toBeVisible();
   await expect(page.getByText("Best match")).toBeVisible();
   expect(giftSourceRequest?.brief?.personId).toBe("sarah");

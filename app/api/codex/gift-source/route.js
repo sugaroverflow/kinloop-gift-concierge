@@ -14,7 +14,9 @@ export async function POST(request) {
   return Response.json({
     ok: true,
     mode: result.mode,
+    codexMode: result.mode,
     source: result.source,
+    analysisSource: result.source,
     productSource: result.productSource || result.source,
     catalog: result.catalog || null,
     brief: result.brief || null,

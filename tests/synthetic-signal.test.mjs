@@ -1,6 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import { createSignalFromEmail, formatSignalForCodex } from "../lib/signals/email-signal.js";
+import { derivePeopleFromSyntheticSource, sourceTextForPersonId } from "../lib/source-people.js";
 
 test("email signal extraction finds Sarah gift preferences", () => {
   const signal = createSignalFromEmail({
@@ -33,4 +34,39 @@ test("email signal formats a Codex-ready source", () => {
   assert.match(sourceText, /Source: kinloop_synthetic_source/);
   assert.match(sourceText, /espresso/);
   assert.match(sourceText, /GBP 58/);
+});
+
+test("synthetic source fixture derives dashboard people without people.json", () => {
+  const people = derivePeopleFromSyntheticSource();
+  const elara = people.find((person) => person.id === "sarah");
+  const torin = people.find((person) => person.id === "mateo");
+  const lyra = people.find((person) => person.id === "priya");
+  const celeste = people.find((person) => person.id === "amina");
+  const rowan = people.find((person) => person.id === "rowan");
+
+  assert.equal(people.length >= 5, true);
+  assert.equal(elara.name, "Elara Moonwell");
+  assert.equal(elara.clues.includes("pottery"), true);
+  assert.equal(elara.avoid.includes("generic mugs"), true);
+  assert.match(elara.note, /pottery|espresso|hosting/i);
+  assert.equal(torin.clues.includes("cycling"), true);
+  assert.equal(torin.clues.includes("cookbooks"), true);
+  assert.equal(torin.avoid.includes("alcohol"), true);
+  assert.equal(torin.clues.includes("pottery"), false);
+  assert.equal(lyra.clues.includes("textiles"), true);
+  assert.equal(lyra.clues.includes("plants"), true);
+  assert.equal(lyra.clues.includes("espresso"), false);
+  assert.equal(celeste.clues.includes("gardening"), true);
+  assert.equal(celeste.clues.includes("tea"), true);
+  assert.equal(celeste.clues.includes("pottery"), false);
+  assert.equal(rowan.clues.includes("activism"), true);
+  assert.equal(rowan.clues.includes("journalism"), true);
+});
+
+test("synthetic source exposes Codex-ready email text per person", () => {
+  const sourceText = sourceTextForPersonId("sarah");
+
+  assert.match(sourceText, /Synthetic|Source: kinloop_synthetic_source/i);
+  assert.match(sourceText, /pottery|espresso/i);
+  assert.doesNotMatch(sourceText, /people\.json/i);
 });

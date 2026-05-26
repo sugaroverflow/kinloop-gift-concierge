@@ -8,23 +8,27 @@ Kinloop is a source-driven gift concierge. The user-facing app stays focused on 
 
 The app proves a tight commerce-adjacent product loop:
 
-1. A user signs in or continues on the current device.
+1. A user signs in with Supabase email/password auth or explicitly continues on the current device for demo resilience.
 2. The user runs synthetic data input from the checked-in source fixture.
-3. Kinloop normalizes people, dates, interests, avoid lists, budgets, and source summaries.
+3. Kinloop normalizes people, dates, interests, avoid lists, budgets, and source summaries from the synthetic email fixture.
 4. The dashboard opens on the next birthday and presents a read-only gift brief.
-5. Kinloop searches Shopify UCP Catalog MCP for product candidates when live product discovery is enabled, falling back to the mock retailer feed when unavailable.
-6. Codex turns the relationship context and product candidates into structured gift ideas.
-7. The user approves one idea and chooses reminder timing.
-8. Supabase records durable state when configured; browser state keeps the local flow reliable.
-9. Optional reminder preferences can be handed to the OpenClaw channel service when credentials and allowlists are verified.
+5. Kinloop searches Shopify UCP Catalog MCP for product candidates when live product discovery is enabled.
+6. Codex filters those candidates against the source clues, avoid list, budget, and birthday context.
+7. Codex turns the curated relationship context and product candidates into structured gift ideas.
+8. The user approves one idea and chooses reminder timing.
+9. Supabase records imported source summaries, approvals, and reminder timing when configured; browser state keeps the local flow reliable.
+10. Optional reminder preferences can be handed to the OpenClaw channel service when credentials and allowlists are verified.
 
 ## System Flow
 
 ```txt
  synthetic source fixture
-  -> signal normalizer
+  -> source normalizer
+  -> Codex source analysis with deterministic fallback
   -> birthday dashboard
   -> product candidate source
+  -> Shopify product candidates
+  -> Codex candidate curation
   -> Codex structured transformation
   -> gift ideas
   -> user approval
@@ -38,10 +42,10 @@ The app proves a tight commerce-adjacent product loop:
 | Term | Meaning |
 |---|---|
 | Kinloop app | The consumer-facing app surface for sources, people, gift ideas, approval, and reminder opt-in. |
-| Source normalizer | Deterministic code that extracts interests, avoid lists, budget, deadline, and source text. |
-| Shopify UCP Catalog MCP product source | Live catalog search source for product candidates when configured, with mock retailer feed fallback. |
-| Programmatic Codex transformation | Codex SDK workflow that turns source context and product candidates into structured gift ideas. |
-| Supabase product memory | Durable auth, recipient, gift option, approval, and event state. |
+| Source normalizer | Deterministic code that extracts people, interests, avoid lists, budget, deadline, and source text from the synthetic email fixture. |
+| Shopify UCP Catalog MCP product source | Live catalog search source for product candidates, with mock retailer feed fallback when live discovery or curation cannot produce usable options. |
+| Programmatic Codex transformation | Codex SDK workflow that filters product candidates and turns source context into structured gift ideas. |
+| Supabase product memory | Durable auth, imported summary, recipient, gift option, approval, reminder, and event state. |
 | Local resilience | Browser/file-backed state that keeps the recording path usable when credentials are unavailable. |
 | Codex build subagents | Codex implementation/review workers used during build work. They are not shipped as runtime product agents. |
 | OpenClaw channel service | Messaging, routing, and CLI boundary for allowlisted reminder outreach. |
@@ -51,11 +55,11 @@ The app proves a tight commerce-adjacent product loop:
 | Layer | Owner | Submission posture |
 |---|---|---|
 | Web app | Next app in `app/` | Primary product surface |
-| Auth | Supabase Auth | Real sign-in path when credentials are configured |
+| Auth | Supabase Auth | Real email/password sign-in path when credentials are configured |
 | Source intake | Checked-in synthetic source bundle | Primary deterministic local path |
-| Source normalization | `lib/signals/email-signal.js` and source-bundle mapping | Deterministic, tested extraction |
+| Source normalization | `lib/source-people.js`, `lib/signals/email-signal.js`, and source-bundle mapping | Deterministic, tested extraction |
 | Product source | `lib/product-source.js` | Shopify UCP Catalog MCP first when enabled, mock retailer feed fallback |
-| Programmatic Codex | `@openai/codex-sdk` in `/api/codex/gift-source` | Primary in-app AI capability |
+| Programmatic Codex | `@openai/codex-sdk` in `/api/codex/gift-source` | Candidate curation and structured gift transformation |
 | Schema guardrails | Structured Codex output validation | Prevents unbounded product output |
 | Persistence | Supabase plus local resilience | Durable product path plus reliable recording path |
 | OpenClaw | OpenClaw channel service | Optional live reminder channel when credentials and allowlists are verified |
@@ -75,9 +79,9 @@ The app proves a tight commerce-adjacent product loop:
 
 ## Integration Boundaries
 
-Supabase is the durable product system of record. Local resilience exists so the app can continue if credentials, network, or auth state fails.
+Supabase is the durable product system of record for authenticated runs. Local resilience exists so the app can continue if credentials, network, or auth state fails.
 
-The primary source path is the checked-in synthetic fixture (`data/kinloop/synthetic-source-sample.json`).
+The primary source path is the checked-in synthetic fixture (`data/kinloop/synthetic-source-sample.json`). Dashboard people are derived from that fixture, not from a separate `people.json` seed.
 
 Codex SDK is the primary in-app Codex story. Codex CLI auth can be used locally for recording; production should use a scoped server-side secret.
 
@@ -86,8 +90,6 @@ Shopify UCP Catalog MCP is the product candidate source when configured through 
 OpenClaw is a channel service for reminders, routing, and CLI operations. It is not the recommender, approval owner, payment layer, or memory layer.
 
 Approval can call `/api/openclaw/reminder` in preview mode to produce the channel payload without sending externally. Real or CLI sends require explicit credentials, consent, and allowlisted targets.
-
-OpenAI-native voice escalation is intentionally outside the current MVP path and is tracked in `docs/future-considerations.md`.
 
 ## Gift Source Route
 
@@ -99,7 +101,7 @@ OpenAI-native voice escalation is intentionally outside the current MVP path and
 - `sourceSignal` from email ingestion when available
 - `preferLive` to request live Codex/catalog paths
 
-The route normalizes that request into a relationship brief, loads product candidates from the configured catalog path with local catalog fallback, runs the Codex structured transformation when live credentials are enabled, validates three approval-ready options, and returns metadata useful for the code walkthrough. The product UI consumes only the shopper-safe option fields.
+The route normalizes that request into a relationship brief, loads product candidates from Shopify UCP Catalog MCP with local catalog fallback, runs Codex candidate curation when live credentials are enabled, runs the Codex structured transformation, validates three approval-ready options, and returns metadata useful for the code walkthrough. Shopify supplies product candidates; Codex filters candidate fit and performs the relationship/source-to-gift transformation. The product UI consumes only the shopper-safe option fields.
 
 ## Verification Themes
 

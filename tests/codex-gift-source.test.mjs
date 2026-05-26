@@ -9,7 +9,7 @@ test("local gift source returns shopper-facing structured candidate", () => {
   });
 
   assert.equal(typeof candidate.title, "string");
-  assert.equal(candidate.why.includes("Sarah") || candidate.suggestedSearch.includes("Sarah"), true);
+  assert.equal(candidate.why.includes("Elara") || candidate.suggestedSearch.includes("Elara"), true);
   assert.equal(candidate.fitScore >= 1 && candidate.fitScore <= 100, true);
 });
 
@@ -31,7 +31,7 @@ test("Codex gift source uses product feed fallback when live Codex is not reques
 
 test("local gift source returns three approval-ready options", () => {
   const options = generateFallbackGiftOptions({
-    input: "Sarah mentioned pottery, espresso, and hosting. Budget is GBP 40-75."
+    input: "Elara mentioned pottery, espresso, and hosting. Budget is GBP 40-75."
   });
 
   assert.equal(options.length, 3);
@@ -45,8 +45,8 @@ test("local gift options do not expose AgentMail metadata as titles", () => {
     input: [
       "Source: kinloop_synthetic_source",
       "Recipient: sarah",
-      "Subject: Sarah birthday idea",
-      "- Lead: Sarah mentioned pottery and espresso."
+      "Subject: Elara birthday idea",
+      "- Lead: Elara mentioned pottery and espresso."
     ].join("\n")
   });
 

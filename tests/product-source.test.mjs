@@ -201,6 +201,38 @@ test("product candidate loader uses Shopify Global Catalog by default when live 
   });
 });
 
+test("product candidate loader passes raw Shopify candidates to Codex curation", async () => {
+  await withEnv({
+    SHOPIFY_UCP_MCP_ENDPOINT: "https://catalog.example.test/mcp"
+  }, async () => {
+    const result = await loadProductCandidates({
+      input: "Elara mentioned pottery, espresso, and hosting. Budget is GBP 40-75.",
+      person: recipients[0],
+      preferLive: true,
+      limit: 3,
+      fetchImpl: async () => ({
+        ok: true,
+        json: async () => ({
+          result: {
+            structuredContent: {
+              products: [{
+                id: "fee-1",
+                title: "No Scripting Charge",
+                price: { amount: 500, currency: "USD" },
+                vendor: "Example Store",
+                product_type: "Fee"
+              }]
+            }
+          }
+        })
+      })
+    });
+
+    assert.equal(result.source, "shopify_ucp_mcp");
+    assert.equal(result.products[0].name, "No Scripting Charge");
+  });
+});
+
 test("product search query strips AgentMail metadata and preserves shopper signal", () => {
   const query = buildProductSearchQuery({
     input: [

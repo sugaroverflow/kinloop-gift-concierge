@@ -2,14 +2,73 @@
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import sourceBundle from "../data/kinloop/synthetic-source-sample.json";
-import { gifts, recipients } from "../lib/product-data";
+import { gifts, recipients, selectGiftProducts } from "../lib/product-data";
 import { initialKinloopState, loadKinloopState, saveKinloopState } from "../lib/persistence";
-import { getBrowserSupabaseClient } from "../lib/supabase/client";
-import { recordKinloopApproval } from "../lib/supabase/repository";
+import { getBrowserSupabaseClient, signInWithEmailPassword, signOutOfSupabase } from "../lib/supabase/client";
+import { recordKinloopApproval, recordKinloopImport } from "../lib/supabase/repository";
 
 const importSteps = ["connect", "scanning", "complete"];
 const stepLabels = { connect: "Input", scanning: "Scanning", complete: "Ready" };
 const syntheticSource = { id: "synthetic", name: "Synthetic JSON sample" };
+const importSources = [
+  {
+    id: "synthetic",
+    name: "Synthetic data input",
+    icon: "K",
+    label: "Ready",
+    description: "Use the checked-in sample email data for a deterministic, privacy-safe run.",
+    detail: "33 messages · 5 people · local fixture",
+    accent: "oklch(68% 0.13 151)",
+    enabled: true
+  },
+  {
+    id: "gmail",
+    name: "Gmail",
+    icon: "G",
+    label: "Coming soon",
+    description: "Bring in birthday clues from selected email threads.",
+    detail: "OAuth, scoped import, no continuous indexing",
+    accent: "oklch(66% 0.16 28)"
+  },
+  {
+    id: "obsidian",
+    name: "Obsidian",
+    icon: "O",
+    label: "Coming soon",
+    description: "Turn personal notes into relationship memory and gift context.",
+    detail: "Vault import with explicit file selection",
+    accent: "oklch(58% 0.15 292)"
+  },
+  {
+    id: "imessage",
+    name: "iMessage",
+    icon: "I",
+    label: "Coming soon",
+    description: "Summarize opted-in conversation snippets without background scraping.",
+    detail: "Consent-first, bounded import",
+    accent: "oklch(65% 0.16 151)"
+  },
+  {
+    id: "whatsapp",
+    name: "WhatsApp",
+    icon: "W",
+    label: "Coming soon",
+    description: "Use exported chats as a relationship signal source.",
+    detail: "Manual export, explicit review",
+    accent: "oklch(67% 0.14 160)"
+  }
+];
+const sourceCharacters = (sourceBundle.friends || []).map((friend) => {
+  const source = sourceBundle.byPerson?.[friend.personId] || {};
+  return {
+    id: friend.personId,
+    name: friend.displayName,
+    relation: friend.relation,
+    email: friend.email,
+    messageCount: source.messageCount || 0,
+    subjects: source.subjects || []
+  };
+});
 const birdCircleLogoSrc = "/kinloop-bird-circle.png";
 
 export default function KinloopApp({ initialView = "dashboard" }) {
@@ -18,7 +77,10 @@ export default function KinloopApp({ initialView = "dashboard" }) {
   const [view, setView] = useState(initialView);
   const [session, setSession] = useState(null);
   const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
   const [emailSent, setEmailSent] = useState(false);
+  const [authStatus, setAuthStatus] = useState("idle");
+  const [authError, setAuthError] = useState("");
   const [giftStatus, setGiftStatus] = useState("idle");
   const [giftError, setGiftError] = useState("");
   const [giftIdeas, setGiftIdeas] = useState([]);
@@ -62,9 +124,19 @@ export default function KinloopApp({ initialView = "dashboard" }) {
     const client = getBrowserSupabaseClient();
     if (!client) return;
 
-    client.auth.getSession().then(({ data }) => setSession(data.session));
+    client.auth.getSession().then(({ data }) => {
+      setSession(data.session);
+      if (data.session) {
+        setState((current) => ({ ...current, localSession: true, importStep: "connect" }));
+        setView((currentView) => currentView === "signin" ? "import" : currentView);
+      }
+    });
     const { data: listener } = client.auth.onAuthStateChange((_event, nextSession) => {
       setSession(nextSession);
+      if (nextSession) {
+        setState((current) => ({ ...current, localSession: true, importStep: "connect" }));
+        setView((currentView) => currentView === "signin" ? "import" : currentView);
+      }
     });
 
     return () => listener.subscription.unsubscribe();
@@ -137,13 +209,47 @@ export default function KinloopApp({ initialView = "dashboard" }) {
   function continueOnDevice() {
     setState((current) => ({ ...current, localSession: true }));
     setEmailSent(false);
+    setAuthError("");
     setView("import");
   }
 
-  function sendEmailLink(event) {
+  async function sendEmailLink(event) {
     event.preventDefault();
-    if (!email.trim()) return;
-    setEmailSent(true);
+    setAuthStatus("loading");
+    setAuthError("");
+
+    const result = await signInWithEmailPassword({ email, password });
+    if (!result.ok) {
+      setAuthStatus("error");
+      setAuthError(result.error || "Sign-in failed.");
+      return;
+    }
+
+    setAuthStatus("authenticated");
+    setSession(result.session);
+    setEmailSent(false);
+    setState((current) => ({
+      ...current,
+      localSession: true,
+      importStep: "connect",
+      discoveredPeople: [],
+      selectedPersonId: "",
+      sourceImport: null,
+      importSummary: null
+    }));
+    setView("import");
+  }
+
+  async function signOut() {
+    const result = await signOutOfSupabase();
+    if (!result.ok) {
+      showToast(result.error || "Sign-out failed.");
+      return;
+    }
+
+    setSession(null);
+    setState((current) => ({ ...current, localSession: false }));
+    setView("signin");
   }
 
   function scanSources() {
@@ -171,6 +277,7 @@ export default function KinloopApp({ initialView = "dashboard" }) {
         importedAt: new Date().toISOString()
       }
     }));
+    await recordKinloopImport({ client: getBrowserSupabaseClient(), people: discovered, sourceImport: imported }).catch(() => {});
   }
 
   async function revealGiftIdeas() {
@@ -178,9 +285,9 @@ export default function KinloopApp({ initialView = "dashboard" }) {
     setGiftStatus("loading");
     setGiftError("");
     setGiftIdeas([]);
+    const activeSourceImport = sourceImport;
 
     try {
-      const activeSourceImport = sourceImport;
       const response = await fetch("/api/gift-source", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -195,7 +302,7 @@ export default function KinloopApp({ initialView = "dashboard" }) {
       const payload = await response.json();
       if (!response.ok || !payload.ok) throw new Error(payload.error || "Gift ideas could not be prepared.");
 
-      const nextIdeas = normalizeIdeas(payload.options || [payload.candidate], selectedPerson);
+      const nextIdeas = normalizeIdeas(payload.options || [payload.candidate], selectedPerson, activeSourceImport);
       setGiftIdeas(nextIdeas);
       setState((current) => ({
         ...current,
@@ -208,7 +315,7 @@ export default function KinloopApp({ initialView = "dashboard" }) {
       }));
       setGiftStatus("ready");
     } catch {
-      const fallback = gifts.slice(0, 3).map((gift) => giftToIdea(gift, selectedPerson));
+      const fallback = fallbackIdeasForPerson(selectedPerson, activeSourceImport);
       setGiftIdeas(fallback);
       setGiftStatus("ready");
       setGiftError("Using saved gift options while live matching is unavailable.");
@@ -248,7 +355,12 @@ export default function KinloopApp({ initialView = "dashboard" }) {
 
     setState((current) => ({ ...current, approval, reminderEnabled: reminderDays > 0 }));
     setApprovalTarget(null);
-    await recordKinloopApproval({ client: getBrowserSupabaseClient(), option: gift }).catch(() => {});
+    await recordKinloopApproval({
+      client: getBrowserSupabaseClient(),
+      option: gift,
+      person: selectedPerson,
+      reminderDays
+    }).catch(() => {});
     showToast(`${gift.title} approved.`);
   }
 
@@ -265,8 +377,7 @@ export default function KinloopApp({ initialView = "dashboard" }) {
           recipientName: firstName(approvedPerson.name),
           birthday: approvedPerson.birthday,
           sourceText: sourceTextForPerson(approvedPerson, activeSourceImport),
-          approvalUrl: `${window.location.origin}/approved`,
-          includeVoice: false
+          approvalUrl: `${window.location.origin}/approved`
         })
       });
       const payload = await response.json();
@@ -312,15 +423,21 @@ export default function KinloopApp({ initialView = "dashboard" }) {
   if (view === "signin") {
     return (
       <SignInScreen
+        authError={authError}
+        authStatus={authStatus}
         email={email}
         emailSent={emailSent}
         onEmailChange={setEmail}
+        onPasswordChange={setPassword}
         onResetEmail={() => {
           setEmail("");
+          setPassword("");
           setEmailSent(false);
+          setAuthError("");
         }}
         onSendEmailLink={sendEmailLink}
         onContinueLocal={continueOnDevice}
+        password={password}
       />
     );
   }
@@ -345,6 +462,8 @@ export default function KinloopApp({ initialView = "dashboard" }) {
         accountLabel={session?.user?.email || "On this device"}
         onNavigate={navigate}
         onSignIn={() => setView("signin")}
+        onSignOut={signOut}
+        signedIn={Boolean(session)}
       />
 
       {view === "people" ? (
@@ -390,7 +509,18 @@ export default function KinloopApp({ initialView = "dashboard" }) {
   );
 }
 
-function SignInScreen({ email, emailSent, onEmailChange, onResetEmail, onSendEmailLink, onContinueLocal }) {
+function SignInScreen({
+  authError,
+  authStatus,
+  email,
+  emailSent,
+  onEmailChange,
+  onPasswordChange,
+  onResetEmail,
+  onSendEmailLink,
+  onContinueLocal,
+  password
+}) {
   return (
     <main className="entry-screen">
       <button className="entry-brand" onClick={onContinueLocal} aria-label="Kinloop home">
@@ -418,21 +548,34 @@ function SignInScreen({ email, emailSent, onEmailChange, onResetEmail, onSendEma
                   autoComplete="email"
                 />
               </label>
-              <button className="pill-button primary" type="submit">Continue with email</button>
+              <label>
+                <span>Password</span>
+                <input
+                  type="password"
+                  value={password}
+                  onChange={(event) => onPasswordChange(event.target.value)}
+                  placeholder="Account password"
+                  autoComplete="current-password"
+                />
+              </label>
+              {authError ? <p className="inline-note" role="alert">{authError}</p> : null}
+              <button className="pill-button primary" type="submit" disabled={authStatus === "loading"}>
+                {authStatus === "loading" ? "Signing in" : "Sign in"}
+              </button>
               <div className="divider"><span>or</span></div>
               <button className="pill-button secondary" type="button" onClick={onContinueLocal}>
                 Continue on this device
               </button>
-              <p className="microcopy">Your data stays local until you choose to sync.</p>
+              <p className="microcopy">Sign in to save imported people, approvals, and reminder timing.</p>
             </form>
           </>
         ) : (
           <section className="entry-card sent-card">
             <span className="mail-dot">✉</span>
-            <h2>Check your inbox</h2>
-            <p>We sent a sign-in link to <strong>{email}</strong>. Click the link to continue.</p>
+            <h2>Signed in</h2>
+            <p><strong>{email}</strong> is ready to save Kinloop decisions.</p>
             <button className="text-button" type="button" onClick={onResetEmail}>
-              Use a different email
+              Use a different account
             </button>
           </section>
         )}
@@ -464,12 +607,20 @@ function ImportScreen({
             <>
               <div className="screen-copy">
                 <h1 id="import-title">Bring in your people</h1>
-                <p>Use synthetic JSON input to run the full Kinloop flow with deterministic data.</p>
+                <p>Choose a source for relationship clues. The sample email data is ready today.</p>
               </div>
 
-              <button className="pill-button primary tall" onClick={onScanSources}>
-                Synthetic data input
-              </button>
+              <div className="source-group" aria-label="Available sources">
+                <div className="source-group-title">
+                  <i />
+                  <strong>Sources</strong>
+                  <i />
+                </div>
+                {importSources.map((source) => (
+                  <SourceCard key={source.id} source={source} onSelect={onScanSources} />
+                ))}
+              </div>
+              <SourcePreview characters={sourceCharacters} />
               <p className="microcopy">Loads a checked-in synthetic JSON sample to keep the flow deterministic and privacy-safe.</p>
             </>
           )}
@@ -487,7 +638,62 @@ function ImportScreen({
   );
 }
 
-function KinloopHeader({ active, accountLabel, onNavigate, onSignIn }) {
+function SourcePreview({ characters }) {
+  return (
+    <section className="source-preview" aria-label="Synthetic source preview">
+      <div className="source-group-title">
+        <i />
+        <strong>Sample inbox</strong>
+        <i />
+      </div>
+      <div className="source-people">
+        {characters.map((character) => (
+          <article key={character.id} className="source-person">
+            <div>
+              <strong>{character.name}</strong>
+              <span>{character.relation}</span>
+            </div>
+            <a href={`mailto:${character.email}`}>{character.email}</a>
+            <small>
+              {character.messageCount} messages
+              {character.subjects[0] ? ` · ${character.subjects[0]}` : ""}
+            </small>
+          </article>
+        ))}
+      </div>
+    </section>
+  );
+}
+
+function SourceCard({ source, onSelect }) {
+  return (
+    <article
+      className={source.enabled ? "source-card connected" : "source-card unavailable"}
+      style={{ "--source-accent": source.accent }}
+    >
+      <span className="source-icon" aria-hidden="true">{source.icon}</span>
+      <div>
+        <div className="source-card-head">
+          <h3>{source.name}</h3>
+          <span>{source.label}</span>
+        </div>
+        <p>{source.description}</p>
+        <small>{source.detail}</small>
+        {source.enabled ? (
+          <button className="source-connect" type="button" onClick={onSelect}>
+            Synthetic data input
+          </button>
+        ) : (
+          <button className="source-connect" type="button" disabled>
+            Not available yet
+          </button>
+        )}
+      </div>
+    </article>
+  );
+}
+
+function KinloopHeader({ active, accountLabel, onNavigate, onSignIn, onSignOut, signedIn }) {
   const items = [
     ["dashboard", "Today"],
     ["people", "People"],
@@ -514,7 +720,9 @@ function KinloopHeader({ active, accountLabel, onNavigate, onSignIn }) {
       </nav>
       <div className="account-chip">
         <span>{accountLabel}</span>
-        <button type="button" onClick={onSignIn}>Sign in</button>
+        <button type="button" onClick={signedIn ? onSignOut : onSignIn}>
+          {signedIn ? "Sign out" : "Sign in"}
+        </button>
       </div>
     </header>
   );
@@ -653,18 +861,17 @@ function RecommendationHero({ approved, idea, person, onApprove }) {
         </div>
         <h2 id="recommendation-title">{idea.title}</h2>
         <p className="rec-meta">{idea.priceRange} · {idea.deliveryNote}</p>
-        <p>{idea.caption}</p>
+        <p className="rec-caption">{idea.caption}</p>
         <div className="why-box">
           <span>Why this fits</span>
           <p>{idea.why}</p>
         </div>
-      </div>
-      <div className="recommendation-side">
-        <GiftArt label="1" tone="clay" />
-        <button className="pill-button primary" disabled={approved} onClick={() => onApprove(idea)}>
-          {approved ? "Approved" : "Approve this gift"}
-        </button>
-        <p>No purchase happens here. Saved to your Approved list.</p>
+        <div className="recommendation-actions">
+          <button className="pill-button primary" disabled={approved} onClick={() => onApprove(idea)}>
+            {approved ? "Approved" : "Approve this gift"}
+          </button>
+          <p>No purchase happens here · saved to your Approved list</p>
+        </div>
       </div>
     </article>
   );
@@ -673,12 +880,12 @@ function RecommendationHero({ approved, idea, person, onApprove }) {
 function AlternativeCard({ approved, idea, onApprove }) {
   return (
     <article className={approved ? "alternative-card approved" : "alternative-card"}>
-      <div>
-        <span className="match-label quiet">{matchLabel(idea.rank)}</span>
+      <div className="alternative-heading">
         <h3>{idea.title}</h3>
+        <span className="match-label quiet">{matchLabel(idea.rank)}</span>
         <p>{idea.priceRange} · {idea.deliveryNote}</p>
       </div>
-      <p>{idea.risk}</p>
+      <p className="alternative-note">{idea.risk}</p>
       <button className="text-button" type="button" disabled={approved} onClick={() => onApprove(idea)}>
         {approved ? "Approved" : "Approve instead"}
       </button>
@@ -982,14 +1189,6 @@ function KinloopMark({ size = "default" }) {
   );
 }
 
-function GiftArt({ label }) {
-  return (
-    <span className="gift-art" aria-hidden="true">
-      <i>{label}</i>
-    </span>
-  );
-}
-
 async function importRelationshipSource() {
   return localSourceImport();
 }
@@ -1018,8 +1217,7 @@ async function prepareReminderPreview({ gift, person, reminderDays, sourceImport
         recipientName: firstName(person.name),
         birthday: person.birthday,
         sourceText: sourceTextForPerson(person, sourceImport),
-        approvalUrl: `${window.location.origin}/approved`,
-        includeVoice: false
+        approvalUrl: `${window.location.origin}/approved`
       })
     });
     const payload = await response.json();
@@ -1048,18 +1246,18 @@ function buildDiscoveredPeople(sourceImport = null) {
       const source = sourceBundle.byPerson?.[person.id] || {};
       const extracted = signal?.personId === person.id ? signal.extracted || {} : {};
       const interests = extracted.interests?.length
-        ? mergeUnique(extracted.interests, source.interests || person.likes)
-        : source.interests?.length ? source.interests : person.likes;
+        ? mergeUnique(extracted.interests, person.clues || person.likes)
+        : person.clues || person.likes;
       const avoid = extracted.avoid?.length
-        ? mergeUnique(extracted.avoid, source.avoid || person.avoid)
-        : source.avoid?.length ? source.avoid : person.avoid;
+        ? mergeUnique(extracted.avoid, person.avoid)
+        : person.avoid;
       return {
         ...person,
         clues: interests.slice(0, 5),
         avoid,
         budget: extracted.budget || person.budget,
-        sourceCount: source.messageCount || person.sourceSummary?.length || 0,
-        sourceSubjects: source.subjects || [],
+        sourceCount: source.messageCount || person.sourceCount || person.sourceSummary?.length || 0,
+        sourceSubjects: source.subjects || person.sourceSubjects || [],
         latestSignalId: signal?.personId === person.id ? signal.id : ""
       };
     })
@@ -1078,6 +1276,7 @@ function sourceTextForPerson(person, sourceImport = null) {
     `Avoid: ${(person.avoid || []).join(", ")}`,
     `Notes: ${person.note}`,
     `Recent subjects: ${(source.subjects || []).slice(0, 5).join("; ")}`,
+    person.latestSourceText ? `\nSynthetic email data:\n${person.latestSourceText}` : "",
     hasImportedSignal ? `\nLatest source signal:\n${sourceImport.sourceText}` : ""
   ].join("\n");
 }
@@ -1099,12 +1298,12 @@ function giftBriefPayload(person, sourceImport = null) {
   };
 }
 
-function normalizeIdeas(rawIdeas, person) {
+function normalizeIdeas(rawIdeas, person, sourceImport = null) {
   const prepared = rawIdeas.filter(Boolean).slice(0, 3).map((idea, index) => ({
     id: idea.productId || idea.id || `gift-idea-${index + 1}`,
     rank: idea.rank || index + 1,
     title: idea.title || idea.name,
-    caption: idea.caption || "A gift idea selected from the product feed.",
+    caption: idea.caption || `A considered option for ${firstName(person.name)}'s current clues.`,
     why: idea.why || `Matches ${person.name}'s current clues.`,
     risk: idea.risk || idea.consider || "Confirm delivery and fit before approving.",
     priceRange: idea.priceRange || idea.displayPrice || "Price shown by seller",
@@ -1113,9 +1312,12 @@ function normalizeIdeas(rawIdeas, person) {
     fitScore: clampScore(idea.fitScore || idea.score || 82)
   }));
 
-  const fill = gifts.map((gift, index) => giftToIdea(gift, person, index));
-  while (prepared.length < 3) prepared.push(fill[prepared.length]);
-  return prepared;
+  const usedIds = new Set(prepared.map((idea) => idea.id).filter(Boolean));
+  const fill = fallbackIdeasForPerson(person, sourceImport, 3, usedIds);
+  while (prepared.length < 3 && fill.length) {
+    prepared.push({ ...fill.shift(), rank: prepared.length + 1 });
+  }
+  return prepared.slice(0, 3).map((idea, index) => ({ ...idea, rank: index + 1 }));
 }
 
 function giftToIdea(gift, person, index = 0) {
@@ -1131,6 +1333,24 @@ function giftToIdea(gift, person, index = 0) {
     sellerSignal: gift.seller,
     fitScore: gift.score
   };
+}
+
+function fallbackIdeasForPerson(person, sourceImport = null, limit = 3, excludeIds = new Set()) {
+  return fallbackGiftsForPerson(person, sourceImport, gifts.length)
+    .filter((gift) => !excludeIds.has(gift.id))
+    .slice(0, limit)
+    .map((gift, index) => giftToIdea(gift, person, index));
+}
+
+function fallbackGiftsForPerson(person, sourceImport = null, limit = 3) {
+  if (!person) return gifts.slice(0, limit);
+  const ranked = selectGiftProducts({
+    input: sourceTextForPerson(person, sourceImport),
+    person,
+    products: gifts,
+    limit
+  });
+  return ranked.length ? ranked : gifts.slice(0, limit);
 }
 
 function resolveInitialView(initialView, hasLocalSession, hasPeople) {

@@ -6,6 +6,8 @@ const hasCredential = Boolean(
   process.env.CODEX_API_KEY ||
   process.env.OPENAI_API_KEY
 );
+const defaultPersonId = sourceBundle.latestImport?.signal?.personId || sourceBundle.friends?.[0]?.personId || "sarah";
+const defaultPersonName = sourceBundle.friends?.find((friend) => friend.personId === defaultPersonId)?.displayName || "Recipient";
 
 if (!hasCredential) {
   console.error("Codex live check requires CODEX_USE_CLI_AUTH=1, CODEX_API_KEY, or OPENAI_API_KEY.");
@@ -13,8 +15,8 @@ if (!hasCredential) {
 }
 
 const result = await generateGiftSource({
-  input: sourceBundle.latestImport?.sourceText || "Sarah likes pottery, espresso, hosting, and creative workshops.",
-  personId: "sarah",
+  input: sourceBundle.latestImport?.sourceText || `${defaultPersonName} likes pottery, espresso, hosting, and creative workshops.`,
+  personId: defaultPersonId,
   sourceSignal: sourceBundle.latestImport || null,
   preferLive: true
 });

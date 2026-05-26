@@ -1,7 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import { gifts } from "../lib/product-data.js";
-import { sendReminderViaOpenClaw, startVoiceEscalation } from "../lib/openclaw/adapter.js";
+import { sendReminderViaOpenClaw } from "../lib/openclaw/adapter.js";
 import { isOpenClawTargetAllowed, openClawModes, resolveOpenClawMode } from "../lib/openclaw/modes.js";
 import { buildReminderPayload } from "../lib/openclaw/payloads.js";
 import { parseOpenClawReply } from "../lib/openclaw/parse-reply.js";
@@ -127,22 +127,10 @@ test("cli execution can route through VPS over ssh", async () => {
   assert.equal(result.stdout, "queued-via-ssh");
 });
 
-test("voice escalation exposes browser or transcript recovery", async () => {
-  const result = await startVoiceEscalation({
-    to: "+15555550123",
-    message: "Sarah's birthday needs a gift decision.",
-    mode: openClawModes.PREVIEW
-  });
-
-  assert.equal(result.sent, false);
-  assert.equal(result.recovery, "browser_or_transcript");
-  assert.deepEqual(result.command.slice(0, 3), ["openclaw", "voicecall", "call"]);
-});
-
-test("OpenClaw reminder route previews message and voice", async () => {
+test("OpenClaw reminder route previews message payload", async () => {
   const response = await openClawReminderRoute(new Request("http://localhost/api/openclaw/reminder", {
     method: "POST",
-    body: JSON.stringify({ mode: openClawModes.PREVIEW, includeVoice: true })
+    body: JSON.stringify({ mode: openClawModes.PREVIEW })
   }));
   const payload = await response.json();
 
@@ -150,7 +138,6 @@ test("OpenClaw reminder route previews message and voice", async () => {
   assert.equal(payload.ok, true);
   assert.equal(payload.mode, openClawModes.PREVIEW);
   assert.equal(payload.message.sent, false);
-  assert.equal(payload.voice.sent, false);
   assert.match(payload.message.payload.message, /Reply 1, 2, 3, or defer/);
 });
 
@@ -191,7 +178,8 @@ async function withOpenClawEnv(callback) {
     "OPENCLAW_CLI_EXECUTE",
     "OPENCLAW_TEST_TARGET",
     "OPENCLAW_TARGET_ALLOWLIST",
-    "OPENCLAW_CHANNEL"
+    "OPENCLAW_CHANNEL",
+    "OPENCLAW_ACCOUNT"
   ];
   const previous = Object.fromEntries(keys.map((key) => [key, process.env[key]]));
   for (const key of keys) delete process.env[key];

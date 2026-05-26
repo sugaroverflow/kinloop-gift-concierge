@@ -43,7 +43,7 @@ Not allowed without a separate decision:
 
 - committed secrets
 - real payment credentials
-- real SMS/email/voice sends
+- real reminder sends to non-allowlisted targets
 - VPS provisioning
 - broad host filesystem mounts
 

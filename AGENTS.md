@@ -24,7 +24,7 @@ Kinloop is a focused implementation repo for a source-driven gift concierge app 
 - Use `Kinloop app` for the user-facing product surface.
 - Use `synthetic source fixture` for `data/kinloop/synthetic-source-sample.json`.
 - Use `Codex gift transformation` for the in-app Codex SDK workflow.
-- Use `OpenClaw channel service` for allowlisted messaging, routing, CLI, and voice boundaries.
+- Use `OpenClaw channel service` for allowlisted messaging, routing, and CLI boundaries.
 - Use `Supabase product memory` for durable auth, approval, and audit state.
 - Use `Codex build subagents` for implementation and review workflows. They are not runtime product agents.
 

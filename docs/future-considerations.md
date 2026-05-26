@@ -26,35 +26,12 @@ Future versions may explore:
 - collaborative household gifting
 - autonomous negotiation agents
 - adaptive escalation policies
-- OpenClaw-triggered voice confirmation for T-3 reminders
 - continuous preference learning
 - richer merchant research and recovery integrations
 - production OpenClaw gateway/VPS operations
 - external MCP servers for consented tools and diagnostics
 
 All require governance, consent, revocation, audit, and production operations before becoming user-facing features.
-
-## Voice Escalation (Future)
-
-Voice confirmation is a future enhancement, not a current MVP requirement.
-
-Potential future path:
-
-```txt
-heartbeat engine marks reminder as t_3_due
-  -> OpenClaw policy selects voice escalation
-  -> Twilio places allowlisted outbound call
-  -> user confirms or defers
-  -> app records outcome and audit event
-```
-
-Before this moves into MVP:
-
-- explicit recipient consent for call outreach
-- allowlisted targets only
-- bounded retries and quiet hours
-- clear fallback to text reminders
-- reliable callback handling and audit trails
 
 ## Recursive Planning Swarms
 

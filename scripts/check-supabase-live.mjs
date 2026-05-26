@@ -40,14 +40,18 @@ if (!userId) {
   process.exit(1);
 }
 
-const people = await supabase.from("people").select("id, slug, name").eq("slug", "sarah");
+const defaultRecipient = recipients[0];
+const defaultRecipientSlug = defaultRecipient?.id || "sarah";
+const defaultRecipientName = defaultRecipient?.name || "Recipient";
+
+const people = await supabase.from("people").select("id, slug, name").eq("slug", defaultRecipientSlug);
 if (people.error) {
   console.error(`Supabase people query failed: ${people.error.message}`);
   process.exit(1);
 }
 
 if ((people.data || []).length === 0) {
-  console.error("Supabase live check found no Sarah row for the test user.");
+  console.error(`Supabase live check found no ${defaultRecipientName} row for the test user.`);
   process.exit(1);
 }
 
@@ -82,10 +86,10 @@ if (process.env.SUPABASE_OTHER_EMAIL && process.env.SUPABASE_OTHER_PASSWORD) {
     process.exit(1);
   }
 
-  const otherPeople = await other.from("people").select("id, slug, name").eq("slug", "sarah");
+  const otherPeople = await other.from("people").select("id, slug, name").eq("slug", defaultRecipientSlug);
   const leaked = (otherPeople.data || []).some((person) => person.name === recipients[0].name);
   if (otherPeople.error || leaked) {
-    console.error("RLS check failed or another user's Sarah row was visible.");
+    console.error(`RLS check failed or another user's ${defaultRecipientName} row was visible.`);
     process.exit(1);
   }
 }

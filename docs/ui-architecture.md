@@ -14,7 +14,7 @@ Sign in. Run synthetic data input. Review the next gift. Approve one. Set the re
 
 The app should present one primary workflow:
 
-1. Sign in or continue on the current device.
+1. Sign in with the demo account or continue on the current device.
 2. Run synthetic data input.
 3. Watch the import move through input, scanning, and ready states.
 4. Land on the upcoming birthday dashboard.
@@ -35,7 +35,7 @@ Use product language:
 - `You're all set`
 - `Go to dashboard`
 - `Upcoming`
-- `Find Sarah's gift`
+- `Find [name]'s gift`
 - `Why this fits`
 - `Approve this gift`
 - `3d before`
@@ -47,7 +47,7 @@ Truth labels belong in docs, tests, and operator surfaces.
 
 | Surface | Purpose | Primary state |
 |---|---|---|
-| Sign-in screen | Entry and local session start | Email link state or current-device session |
+| Sign-in screen | Entry and local session start | Email/password sign-in state or current-device session |
 | Source import screen | Run synthetic input, scan, and summarize readiness | Input, scanning, ready |
 | Header | Product identity, navigation, account state | Today, People, Approved |
 | Upcoming rail | Navigate discovered people | Imported people, selected person |
