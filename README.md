@@ -2,7 +2,7 @@
 
 Kinloop is a source-driven gift concierge app.
 
-It helps a user import relationship context from a synthetic fixture, discover upcoming birthdays, reveal gift ideas from the configured product path, approve one idea, and schedule a reminder before the decision deadline.
+It helps a user import relationship context from a synthetic fixture, discover upcoming birthdays, reveal gift ideas from the configured product path, approve one idea, or set reminder heartbeat timing that can trigger Discord when the deadline is near.
 
 ## Product Focus
 
@@ -26,23 +26,23 @@ Kinloop is a gift concierge for people who care about birthdays but do not want 
 | Area | Kinloop path |
 |---|---|
 | Product flow | Synthetic email source import to gift approval and reminder opt-in |
-| Login / authorization | Supabase email/password auth with explicit current-device fallback for offline development |
-| Data persistence | Supabase product memory for imported summaries, approvals, and reminder timing plus browser state fallback |
+| Login / authorization | Supabase email/password auth |
+| Data persistence | Supabase product memory for imported summaries and approvals, plus browser state fallback for reminder preference state |
 | Tests | `npm run check` covers docs, UI copy, unit/integration tests, and build; browser smoke runs separately with `npm run check:browser` |
 | Programmatic Codex | `@openai/codex-sdk` powers product candidate curation, source-to-brief analysis, and structured gift idea generation |
 | Product source | Shopify UCP Catalog MCP for live candidates, mock retailer feed fallback when live discovery or Codex curation cannot produce usable options |
-| Reminder channels | OpenClaw preview/send boundary for Discord reminders |
+| Reminder channels | Reminder timing modal with bounded Discord delivery when heartbeats come due |
 
 ## Product Flow
 
 ```txt
 Open Kinloop
-  -> sign in or continue on this device
+  -> sign in
   -> run synthetic data input
   -> review the upcoming birthday dashboard
-  -> find a recommended gift
-  -> approve one idea
-  -> save reminder timing
+  -> choose a path:
+       find a recommended gift -> approve one idea
+       set reminder timing -> receive a Discord message when the heartbeat comes due
 ```
 
 ## Boundaries

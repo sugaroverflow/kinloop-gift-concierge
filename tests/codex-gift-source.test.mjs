@@ -106,6 +106,34 @@ test("gift source request normalizes rich source briefs", () => {
   assert.equal(request.sourceText.includes("Desk coffee"), true);
 });
 
+test("gift source request ignores imported signal when it belongs to another person", async () => {
+  const result = await generateGiftSource({
+    preferLive: false,
+    personId: "amina",
+    input: "Name: Celeste Fernwick\nInterests: gardening, tea, journaling",
+    brief: {
+      personId: "amina",
+      clues: ["gardening", "tea", "journaling"],
+      avoid: ["scented candles"]
+    },
+    sourceSignal: {
+      sourceText: "Recipient: sarah\n- Interests: pottery, espresso, hosting",
+      signal: {
+        personId: "sarah",
+        extracted: {
+          interests: ["pottery", "espresso", "hosting"],
+          avoid: ["generic mugs"]
+        }
+      }
+    }
+  });
+
+  assert.equal(result.brief.personId, "amina");
+  assert.equal(result.brief.clues.includes("espresso"), false);
+  assert.equal(result.brief.clues.includes("pottery"), false);
+  assert.notEqual(result.options[0].productId, "espresso-kit");
+});
+
 test("Codex gift source accepts rich brief and keeps catalog fallback", async () => {
   const result = await generateGiftSource({
     preferLive: false,

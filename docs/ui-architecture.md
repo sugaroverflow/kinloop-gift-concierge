@@ -7,20 +7,31 @@ Product route, copy, and state guidance for Kinloop. Runtime architecture decisi
 Make Kinloop feel like a consumer gift concierge, not a marketplace clone, admin console, or technical demo panel.
 
 ```txt
-Sign in. Run synthetic data input. Review the next gift. Approve one. Set the reminder.
+Sign in. Then either review and approve a gift, or set reminder heartbeat timing from the home dashboard.
 ```
 
 ## Experience Model
 
-The app should present one primary workflow:
+The app should present two focused workflows after sign-in:
 
-1. Sign in with the demo account or continue on the current device.
+1. Sign in with the demo account.
 2. Run synthetic data input.
 3. Watch the import move through input, scanning, and ready states.
 4. Land on the upcoming birthday dashboard.
-5. Review a read-only gift brief.
-6. Find one recommended gift plus quieter alternatives.
-7. Approve one idea in a modal and choose reminder timing.
+5. Choose either the gift approval path or the reminder path.
+
+Gift approval path:
+
+1. Review a read-only gift brief.
+2. Find one recommended gift plus quieter alternatives.
+3. Approve one idea in a modal.
+
+Reminder path:
+
+1. Use the home reminder splash to open reminder timing.
+2. Choose `Later today`, `3 days`, or `7 days`.
+3. Let the heartbeat path trigger Discord when the deadline is near.
+4. Treat WhatsApp or a phone call as operator-narrated channel extensions, not product UI defaults.
 
 ## Copy Rules
 
@@ -29,16 +40,19 @@ Do not use internal implementation labels in the product UI. Product copy should
 Use product language:
 
 - `Sign in`
-- `Continue on this device`
 - `Bring in your people`
 - `Synthetic data input`
 - `You're all set`
 - `Go to dashboard`
 - `Upcoming`
+- `Need a reminder?`
+- `Set reminder`
+- `Later today`
+- `3 days`
+- `7 days`
 - `Find [name]'s gift`
 - `Why this fits`
 - `Approve this gift`
-- `3d before`
 - `Privacy and controls`
 
 Truth labels belong in docs, tests, and operator surfaces.
@@ -47,13 +61,15 @@ Truth labels belong in docs, tests, and operator surfaces.
 
 | Surface | Purpose | Primary state |
 |---|---|---|
-| Sign-in screen | Entry and local session start | Email/password sign-in state or current-device session |
+| Sign-in screen | Entry and account session start | Email/password sign-in state |
 | Source import screen | Run synthetic input, scan, and summarize readiness | Input, scanning, ready |
 | Header | Product identity, navigation, account state | Today, People, Approved |
+| Reminder splash | Open reminder timing without requiring gift approval | Ready, set, setup attention |
+| Reminder modal | Choose heartbeat timing | Later today, 3 days, 7 days |
 | Upcoming rail | Navigate discovered people | Imported people, selected person |
 | Gift brief | Present the next birthday and source-derived clues | Read-only selected person |
 | Recommendation | Present one chosen gift plus alternatives | Loading, ready, approved |
-| Approval modal | Confirm gift decision and reminder timing | Open, confirmed |
+| Approval modal | Confirm gift decision | Open, confirmed |
 | Footer | Quiet privacy and boundary copy | Always visible |
 
 ## Product State
@@ -112,7 +128,7 @@ Each option should show:
 
 ### Reminder
 
-Reminder timing belongs in the approval modal. It records preference; live channel delivery remains credentialed and allowlisted.
+Reminder setup belongs in a separate home dashboard splash, styled like a Kinloop text message. Clicking `Set reminder` should open an inline timing modal with `Later today`, `3 days`, and `7 days`. `Later today` can send immediately for the demo; the other options record heartbeat timing for a later Discord ping. WhatsApp and phone-call extensions can be explained in the demo as channel-routing possibilities outside the primary UI. Live channel delivery remains credentialed and allowlisted.
 
 ## Quality Bar
 

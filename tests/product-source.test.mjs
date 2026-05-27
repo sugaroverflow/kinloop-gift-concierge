@@ -1,7 +1,8 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import { buildProductSearchQuery, fetchShopifyCatalogProducts, loadProductCandidates } from "../lib/product-source.js";
-import { recipients } from "../lib/product-data.js";
+import { gifts, recipients, selectGiftProducts } from "../lib/product-data.js";
+import { sourceTextForPersonId } from "../lib/source-people.js";
 
 function withEnv(overrides, fn) {
   const original = {};
@@ -145,6 +146,24 @@ test("product candidate loader uses Shopify UCP MCP source when live products ar
     assert.equal(result.products[0].id, "shopify-product-202");
     assert.equal(result.products[0].seller, "Clay House");
   });
+});
+
+test("mock retailer feed ranking changes with the selected person's source text", () => {
+  const topGiftByPerson = Object.fromEntries(
+    recipients.map((person) => [
+      person.id,
+      selectGiftProducts({
+        input: sourceTextForPersonId(person.id),
+        person,
+        products: gifts,
+        limit: 1
+      })[0]?.id
+    ])
+  );
+
+  assert.notEqual(topGiftByPerson.sarah, topGiftByPerson.mateo);
+  assert.notEqual(topGiftByPerson.priya, topGiftByPerson.amina);
+  assert.equal(new Set(Object.values(topGiftByPerson)).size >= 4, true);
 });
 
 test("product candidate loader falls back to mock retailer feed when Shopify UCP MCP fails", async () => {

@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import sourceBundle from "../data/kinloop/synthetic-source-sample.json";
-import { gifts, recipients, selectGiftProducts } from "../lib/product-data";
+import { recipients } from "../lib/product-data";
 import { initialKinloopState, loadKinloopState, saveKinloopState } from "../lib/persistence";
 import { getBrowserSupabaseClient, signInWithEmailPassword, signOutOfSupabase } from "../lib/supabase/client";
 import { recordKinloopApproval, recordKinloopImport } from "../lib/supabase/repository";
@@ -85,6 +85,7 @@ export default function KinloopApp({ initialView = "dashboard" }) {
   const [giftError, setGiftError] = useState("");
   const [giftIdeas, setGiftIdeas] = useState([]);
   const [approvalTarget, setApprovalTarget] = useState(null);
+  const [reminderSetupOpen, setReminderSetupOpen] = useState(false);
   const [sendingReminder, setSendingReminder] = useState(false);
   const [reminderChannel, setReminderChannel] = useState({ loading: false, ready: false, summary: "" });
   const [toast, setToast] = useState("");
@@ -101,10 +102,6 @@ export default function KinloopApp({ initialView = "dashboard" }) {
 
   const orderedPeople = useMemo(() => [...people].sort(dueSoonest), [people]);
   const approvedIdea = state.approval || null;
-  const approvedPerson = useMemo(
-    () => people.find((person) => person.id === approvedIdea?.personId) || selectedPerson || null,
-    [approvedIdea?.personId, people, selectedPerson]
-  );
 
   useEffect(() => {
     const loaded = loadKinloopState();
@@ -166,7 +163,7 @@ export default function KinloopApp({ initialView = "dashboard" }) {
 
   useEffect(() => {
     let cancelled = false;
-    if (view !== "approved") return;
+    if (view !== "dashboard") return;
 
     setReminderChannel({ loading: true, ready: false, summary: "Checking reminder channel..." });
     fetch("/api/openclaw/status")
@@ -204,13 +201,6 @@ export default function KinloopApp({ initialView = "dashboard" }) {
       return;
     }
     setView(nextView);
-  }
-
-  function continueOnDevice() {
-    setState((current) => ({ ...current, localSession: true }));
-    setEmailSent(false);
-    setAuthError("");
-    setView("import");
   }
 
   async function sendEmailLink(event) {
@@ -302,7 +292,9 @@ export default function KinloopApp({ initialView = "dashboard" }) {
       const payload = await response.json();
       if (!response.ok || !payload.ok) throw new Error(payload.error || "Gift ideas could not be prepared.");
 
-      const nextIdeas = normalizeIdeas(payload.options || [payload.candidate], selectedPerson, activeSourceImport);
+      const nextIdeas = normalizeIdeas(payload.options || [payload.candidate], selectedPerson);
+      if (!nextIdeas.length) throw new Error("Gift ideas could not be prepared.");
+
       setGiftIdeas(nextIdeas);
       setState((current) => ({
         ...current,
@@ -314,11 +306,14 @@ export default function KinloopApp({ initialView = "dashboard" }) {
         }
       }));
       setGiftStatus("ready");
-    } catch {
-      const fallback = fallbackIdeasForPerson(selectedPerson, activeSourceImport);
-      setGiftIdeas(fallback);
-      setGiftStatus("ready");
-      setGiftError("Using saved gift options while live matching is unavailable.");
+    } catch (error) {
+      setGiftIdeas([]);
+      setGiftStatus("idle");
+      setGiftError(
+        error instanceof Error && error.message
+          ? error.message
+          : "Gift matching is unavailable right now. Try again in a moment."
+      );
     }
   }
 
@@ -330,14 +325,7 @@ export default function KinloopApp({ initialView = "dashboard" }) {
     setView("dashboard");
   }
 
-  async function confirmApproval(gift, reminderDays) {
-    const activeSourceImport = sourceImport;
-    const reminderPreview = await prepareReminderPreview({
-      gift,
-      person: selectedPerson,
-      reminderDays,
-      sourceImport: activeSourceImport
-    });
+  async function confirmApproval(gift) {
     const approval = {
       giftId: gift.id,
       personId: selectedPerson?.id,
@@ -346,71 +334,87 @@ export default function KinloopApp({ initialView = "dashboard" }) {
       title: gift.title,
       priceRange: gift.priceRange,
       deliveryNote: gift.deliveryNote,
-      reminderDays,
       approvedAt: new Date().toISOString(),
-      reason: gift.why,
-      reminderPreview,
-      reminderError: reminderPreview?.error || ""
+      reason: gift.why
     };
 
-    setState((current) => ({ ...current, approval, reminderEnabled: reminderDays > 0 }));
+    setState((current) => ({ ...current, approval }));
     setApprovalTarget(null);
     await recordKinloopApproval({
       client: getBrowserSupabaseClient(),
       option: gift,
       person: selectedPerson,
-      reminderDays
+      reminderDays: 0
     }).catch(() => {});
     showToast(`${gift.title} approved.`);
   }
 
-  async function sendApprovedReminder() {
-    if (!approvedIdea || !approvedPerson || sendingReminder) return;
+  async function confirmReminderHeartbeats(reminderTiming) {
+    if (!selectedPerson || sendingReminder) return;
 
+    const isDemoInstant = reminderTiming.id === "later-today";
     setSendingReminder(true);
+
     try {
-      const activeSourceImport = sourceImport;
-      const response = await fetch("/api/openclaw/reminder", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          recipientName: firstName(approvedPerson.name),
-          birthday: approvedPerson.birthday,
-          sourceText: sourceTextForPerson(approvedPerson, activeSourceImport),
-          approvalUrl: `${window.location.origin}/approved`
-        })
-      });
-      const payload = await response.json();
-      if (!response.ok || !payload.ok) {
-        throw new Error(payload.error || "Reminder request failed.");
+      let sendResult = null;
+      if (isDemoInstant) {
+        const activeSourceImport = sourceImport;
+        const response = await fetch("/api/openclaw/reminder", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            recipientName: firstName(selectedPerson.name),
+            birthday: selectedPerson.birthday,
+            sourceText: sourceTextForPerson(selectedPerson, activeSourceImport),
+            approvalUrl: `${window.location.origin}/`
+          })
+        });
+        const payload = await response.json();
+        if (!response.ok || !payload.ok) {
+          throw new Error(payload.error || "Reminder could not be sent.");
+        }
+        sendResult = payload;
       }
 
       setState((current) => ({
         ...current,
-        approval: current.approval
-          ? {
-              ...current.approval,
-              reminderPreview: payload.message || current.approval.reminderPreview || null,
-              reminderMode: payload.mode || current.approval.reminderMode || "preview",
-              reminderLastAttemptAt: new Date().toISOString(),
-              reminderError: payload.message?.error || payload.error || ""
-            }
-          : current.approval
+        reminderEnabled: true,
+        reminderHeartbeat: {
+          channel: "Discord",
+          state: isDemoInstant && sendResult?.message?.sent ? "sent" : "requested",
+          timing: reminderTiming.label,
+          reminderDays: reminderTiming.days,
+          requestedAt: new Date().toISOString(),
+          personId: selectedPerson.id,
+          personName: selectedPerson.name,
+          birthday: selectedPerson.birthday,
+          sent: Boolean(sendResult?.message?.sent),
+          mode: sendResult?.mode || "",
+          error: sendResult?.message?.error || sendResult?.error || ""
+        }
       }));
-
-      showToast(payload.message?.sent ? "Reminder sent." : "Reminder prepared. Live send can be enabled any time.");
+      setReminderSetupOpen(false);
+      if (isDemoInstant) {
+        showToast(sendResult?.message?.sent ? "Discord ping sent." : "Discord ping prepared for demo.");
+      } else {
+        showToast(`Reminder set for ${reminderTiming.label.toLowerCase()}.`);
+      }
     } catch {
       setState((current) => ({
         ...current,
-        approval: current.approval
-          ? {
-              ...current.approval,
-              reminderLastAttemptAt: new Date().toISOString(),
-              reminderError: "Channel setup required."
-            }
-          : current.approval
+        reminderHeartbeat: {
+          channel: "Discord",
+          state: "requested",
+          timing: reminderTiming.label,
+          reminderDays: reminderTiming.days,
+          requestedAt: new Date().toISOString(),
+          personId: selectedPerson.id,
+          personName: selectedPerson.name,
+          birthday: selectedPerson.birthday,
+          error: "Channel setup required."
+        }
       }));
-      showToast("Reminder could not be sent. Check allowlisted channel setup.");
+      showToast(isDemoInstant ? "Discord ping could not be sent." : "Reminder could not be saved.");
     } finally {
       setSendingReminder(false);
     }
@@ -436,7 +440,6 @@ export default function KinloopApp({ initialView = "dashboard" }) {
           setAuthError("");
         }}
         onSendEmailLink={sendEmailLink}
-        onContinueLocal={continueOnDevice}
         password={password}
       />
     );
@@ -471,9 +474,6 @@ export default function KinloopApp({ initialView = "dashboard" }) {
       ) : view === "approved" ? (
         <ApprovedView
           approval={approvedIdea}
-          reminderChannel={reminderChannel}
-          sendingReminder={sendingReminder}
-          onSendReminder={sendApprovedReminder}
           onNavigateDashboard={() => navigate("dashboard")}
         />
       ) : (
@@ -482,11 +482,15 @@ export default function KinloopApp({ initialView = "dashboard" }) {
           giftError={giftError}
           giftIdeas={giftIdeas}
           giftStatus={giftStatus}
+          reminderChannel={reminderChannel}
+          reminderHeartbeat={state.reminderHeartbeat}
+          sendingReminder={sendingReminder}
           people={orderedPeople}
           selectedPerson={selectedPerson}
           selectedId={selectedId}
           onApprove={setApprovalTarget}
           onFindGift={revealGiftIdeas}
+          onOpenReminder={() => setReminderSetupOpen(true)}
           onSelectPerson={selectPerson}
           approvedGiftId={approvedIdea?.giftId}
         />
@@ -504,6 +508,14 @@ export default function KinloopApp({ initialView = "dashboard" }) {
         onConfirm={confirmApproval}
       />
 
+      <ReminderModal
+        open={reminderSetupOpen}
+        person={selectedPerson}
+        sending={sendingReminder}
+        onClose={() => setReminderSetupOpen(false)}
+        onConfirm={confirmReminderHeartbeats}
+      />
+
       {toast && <div className="toast">{toast}</div>}
     </main>
   );
@@ -518,15 +530,14 @@ function SignInScreen({
   onPasswordChange,
   onResetEmail,
   onSendEmailLink,
-  onContinueLocal,
   password
 }) {
   return (
     <main className="entry-screen">
-      <button className="entry-brand" onClick={onContinueLocal} aria-label="Kinloop home">
+      <div className="entry-brand" aria-label="Kinloop">
         <KinloopMark size="small" />
         <span>Kinloop</span>
-      </button>
+      </div>
 
       <section className="entry-stack" aria-labelledby="signin-title">
         {!emailSent ? (
@@ -562,11 +573,7 @@ function SignInScreen({
               <button className="pill-button primary" type="submit" disabled={authStatus === "loading"}>
                 {authStatus === "loading" ? "Signing in" : "Sign in"}
               </button>
-              <div className="divider"><span>or</span></div>
-              <button className="pill-button secondary" type="button" onClick={onContinueLocal}>
-                Continue on this device
-              </button>
-              <p className="microcopy">Sign in to save imported people, approvals, and reminder timing.</p>
+              <p className="microcopy">Sign in to save imported people, approvals, and reminder preferences.</p>
             </form>
           </>
         ) : (
@@ -734,11 +741,15 @@ function DashboardView({
   giftError,
   giftIdeas,
   giftStatus,
+  reminderChannel,
+  reminderHeartbeat,
+  sendingReminder,
   people,
   selectedPerson,
   selectedId,
   onApprove,
   onFindGift,
+  onOpenReminder,
   onSelectPerson
 }) {
   if (!selectedPerson) {
@@ -763,6 +774,13 @@ function DashboardView({
 
   return (
     <div className="dashboard-stack">
+      <ReminderHero
+        onOpenReminder={onOpenReminder}
+        reminderChannel={reminderChannel}
+        reminderHeartbeat={reminderHeartbeat}
+        sendingReminder={sendingReminder}
+      />
+
       <div className="source-status">
         <span className="pulse-dot" />
         <span>
@@ -814,6 +832,43 @@ function DashboardView({
         </section>
       )}
     </div>
+  );
+}
+
+function ReminderHero({ reminderChannel, reminderHeartbeat, sendingReminder, onOpenReminder }) {
+  const hasError = Boolean(reminderHeartbeat?.error);
+  const status = hasError
+    ? "Discord setup needs attention."
+    : reminderHeartbeat?.sent || reminderHeartbeat?.state === "sent"
+      ? "Discord ping sent."
+      : reminderHeartbeat?.state === "requested"
+      ? `Reminder set: ${reminderHeartbeat.timing}.`
+      : reminderHeartbeat
+        ? "Reminder saved."
+        : reminderChannel?.loading
+          ? "Checking heartbeat channel..."
+          : reminderChannel?.ready
+            ? "Discord heartbeat channel ready."
+            : "Heartbeat preview available.";
+
+  return (
+    <section className="reminder-hero" aria-labelledby="reminder-title">
+      <div className="reminder-brand">
+        <KinloopMark />
+        <span>Kinloop</span>
+      </div>
+      <div className="message-banner">
+        <span className="message-from">Kinloop text</span>
+        <h2 id="reminder-title">Need a reminder?</h2>
+        <p>Don't have time to review gifts today? Set heartbeat timing and Kinloop can ping you on Discord when the deadline is near.</p>
+      </div>
+      <div className="reminder-hero-action">
+        <button className="pill-button primary" type="button" onClick={onOpenReminder} disabled={sendingReminder}>
+          Set reminder
+        </button>
+        <small>{status}</small>
+      </div>
+    </section>
   );
 }
 
@@ -894,13 +949,11 @@ function AlternativeCard({ approved, idea, onApprove }) {
 }
 
 function ApprovalModal({ gift, person, onClose, onConfirm }) {
-  const [reminderDays, setReminderDays] = useState(3);
   const [confirmed, setConfirmed] = useState(false);
 
   useEffect(() => {
     if (!gift) {
       setConfirmed(false);
-      setReminderDays(3);
     }
   }, [gift]);
 
@@ -908,7 +961,7 @@ function ApprovalModal({ gift, person, onClose, onConfirm }) {
 
   function approve() {
     setConfirmed(true);
-    window.setTimeout(() => onConfirm(gift, reminderDays), 420);
+    window.setTimeout(() => onConfirm(gift), 420);
   }
 
   return (
@@ -924,18 +977,6 @@ function ApprovalModal({ gift, person, onClose, onConfirm }) {
               <span>{gift.priceRange}</span>
               <span>{gift.deliveryNote}</span>
             </div>
-            <div className="reminder-picker" role="group" aria-label="Reminder timing">
-              {[0, 1, 3, 5].map((days) => (
-                <button
-                  key={days}
-                  type="button"
-                  className={reminderDays === days ? "active" : ""}
-                  onClick={() => setReminderDays(days)}
-                >
-                  {days === 0 ? "No reminder" : `${days}d before`}
-                </button>
-              ))}
-            </div>
             <div className="modal-actions">
               <button className="pill-button secondary" type="button" onClick={onClose}>Cancel</button>
               <button className="pill-button primary" type="button" onClick={approve}>Approve gift</button>
@@ -948,6 +989,58 @@ function ApprovalModal({ gift, person, onClose, onConfirm }) {
             <p>{gift.title} is in your Approved list.</p>
           </div>
         )}
+      </section>
+    </div>
+  );
+}
+
+const reminderTimingOptions = [
+  { id: "later-today", label: "Later today", days: 0 },
+  { id: "three-days", label: "3 days", days: 3 },
+  { id: "seven-days", label: "7 days", days: 7 }
+];
+
+function ReminderModal({ open, person, sending, onClose, onConfirm }) {
+  const [selectedId, setSelectedId] = useState("three-days");
+
+  useEffect(() => {
+    if (open) setSelectedId("three-days");
+  }, [open]);
+
+  if (!open || !person) return null;
+
+  const selectedTiming = reminderTimingOptions.find((option) => option.id === selectedId) || reminderTimingOptions[1];
+
+  return (
+    <div className="modal-layer" role="dialog" aria-modal="true" aria-labelledby="reminder-modal-title">
+      <button className="modal-scrim" aria-label="Close reminder setup" onClick={onClose} />
+      <section className="reminder-modal">
+        <p className="eyebrow">Deadline heartbeats</p>
+        <h2 id="reminder-modal-title">When should Kinloop remind you?</h2>
+        <p>We will keep the heartbeat quiet until {firstName(person.name)}'s deadline is close.</p>
+        <div className="heartbeat-picker" role="group" aria-label="Reminder timing">
+          {reminderTimingOptions.map((option) => (
+            <button
+              key={option.id}
+              type="button"
+              className={selectedId === option.id ? "active" : ""}
+              onClick={() => setSelectedId(option.id)}
+            >
+              {option.label}
+            </button>
+          ))}
+        </div>
+        <div className="modal-actions">
+          <button className="pill-button secondary" type="button" onClick={onClose}>Cancel</button>
+          <button
+            className="pill-button primary"
+            type="button"
+            onClick={() => onConfirm(selectedTiming)}
+            disabled={sending}
+          >
+            {sending ? "Setting reminder" : "Set reminder"}
+          </button>
+        </div>
       </section>
     </div>
   );
@@ -982,13 +1075,13 @@ function PeopleView({ people, selectedId, onSelect }) {
   );
 }
 
-function ApprovedView({ approval, reminderChannel, sendingReminder, onSendReminder, onNavigateDashboard }) {
+function ApprovedView({ approval, onNavigateDashboard }) {
   return (
     <section className="approved-page" aria-labelledby="approved-title">
       <div className="page-heading">
         <p className="eyebrow">Approved gifts</p>
         <h1 id="approved-title">Gift decisions</h1>
-        <p>Approved ideas live here with their person, reminder timing, and purchase boundary.</p>
+        <p>Approved ideas live here with their person and purchase boundary.</p>
       </div>
 
       {approval ? (
@@ -998,23 +1091,8 @@ function ApprovedView({ approval, reminderChannel, sendingReminder, onSendRemind
             <h2>{approval.title}</h2>
             <p>{approval.personName} · {approval.priceRange} · {approval.deliveryNote}</p>
           </div>
-          <div className="approved-reminder">
-            <span>{approval.reminderDays ? `Text ${approval.reminderDays} days before` : "No reminder set"}</span>
-            {approval.reminderDays ? (
-              <button
-                className="text-button"
-                type="button"
-                onClick={onSendReminder}
-                disabled={sendingReminder}
-              >
-                {sendingReminder ? "Sending reminder" : "Send reminder now"}
-              </button>
-            ) : null}
-            {approval.reminderPreview?.mode ? <small>Last run: {approval.reminderPreview.mode}</small> : null}
-            {approval.reminderError ? <small>{approval.reminderError}</small> : null}
-            {reminderChannel?.summary ? (
-              <small>{reminderChannel.loading ? "Checking reminder channel..." : reminderChannel.summary}</small>
-            ) : null}
+          <div className="approved-status">
+            <span>Approval saved</span>
             <small>No purchase or payment happens in Kinloop.</small>
           </div>
         </article>
@@ -1205,40 +1283,6 @@ function localSourceImport(fallbackReason = "") {
   };
 }
 
-async function prepareReminderPreview({ gift, person, reminderDays, sourceImport }) {
-  if (!reminderDays || !person) return null;
-
-  try {
-    const response = await fetch("/api/openclaw/reminder", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        mode: "preview",
-        recipientName: firstName(person.name),
-        birthday: person.birthday,
-        sourceText: sourceTextForPerson(person, sourceImport),
-        approvalUrl: `${window.location.origin}/approved`
-      })
-    });
-    const payload = await response.json();
-    return {
-      ok: response.ok && payload.ok,
-      mode: payload.mode || "preview",
-      target: payload.target || "",
-      productSource: payload.productSource || "",
-      createdAt: new Date().toISOString()
-    };
-  } catch {
-    return {
-      ok: false,
-      mode: "preview",
-      target: "",
-      productSource: "",
-      createdAt: new Date().toISOString()
-    };
-  }
-}
-
 function buildDiscoveredPeople(sourceImport = null) {
   const signal = sourceImport?.signal || null;
   return recipients
@@ -1298,8 +1342,8 @@ function giftBriefPayload(person, sourceImport = null) {
   };
 }
 
-function normalizeIdeas(rawIdeas, person, sourceImport = null) {
-  const prepared = rawIdeas.filter(Boolean).slice(0, 3).map((idea, index) => ({
+function normalizeIdeas(rawIdeas, person) {
+  return rawIdeas.filter(Boolean).slice(0, 3).map((idea, index) => ({
     id: idea.productId || idea.id || `gift-idea-${index + 1}`,
     rank: idea.rank || index + 1,
     title: idea.title || idea.name,
@@ -1311,46 +1355,6 @@ function normalizeIdeas(rawIdeas, person, sourceImport = null) {
     sellerSignal: idea.sellerSignal || idea.seller || "Seller details available before purchase",
     fitScore: clampScore(idea.fitScore || idea.score || 82)
   }));
-
-  const usedIds = new Set(prepared.map((idea) => idea.id).filter(Boolean));
-  const fill = fallbackIdeasForPerson(person, sourceImport, 3, usedIds);
-  while (prepared.length < 3 && fill.length) {
-    prepared.push({ ...fill.shift(), rank: prepared.length + 1 });
-  }
-  return prepared.slice(0, 3).map((idea, index) => ({ ...idea, rank: index + 1 }));
-}
-
-function giftToIdea(gift, person, index = 0) {
-  return {
-    id: gift.id,
-    rank: index + 1,
-    title: gift.name,
-    caption: gift.caption,
-    why: gift.why || (person ? `Matches ${person.name}'s clues.` : "Matches imported gift clues."),
-    risk: gift.consider,
-    priceRange: gift.displayPrice,
-    deliveryNote: gift.delivery,
-    sellerSignal: gift.seller,
-    fitScore: gift.score
-  };
-}
-
-function fallbackIdeasForPerson(person, sourceImport = null, limit = 3, excludeIds = new Set()) {
-  return fallbackGiftsForPerson(person, sourceImport, gifts.length)
-    .filter((gift) => !excludeIds.has(gift.id))
-    .slice(0, limit)
-    .map((gift, index) => giftToIdea(gift, person, index));
-}
-
-function fallbackGiftsForPerson(person, sourceImport = null, limit = 3) {
-  if (!person) return gifts.slice(0, limit);
-  const ranked = selectGiftProducts({
-    input: sourceTextForPerson(person, sourceImport),
-    person,
-    products: gifts,
-    limit
-  });
-  return ranked.length ? ranked : gifts.slice(0, limit);
 }
 
 function resolveInitialView(initialView, hasLocalSession, hasPeople) {

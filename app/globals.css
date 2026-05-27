@@ -161,6 +161,7 @@ p {
 
 .entry-card,
 .import-card,
+.reminder-hero,
 .upcoming-card,
 .gift-brief,
 .recommendation-hero,
@@ -170,7 +171,8 @@ p {
 .approved-card,
 .empty-approved,
 .source-sheet,
-.approval-modal {
+.approval-modal,
+.reminder-modal {
   border: 1px solid var(--line);
   border-radius: 22px;
   background: var(--card);
@@ -216,6 +218,7 @@ p {
 .nav-pill:focus-visible,
 .source-connect:focus-visible,
 .text-button:focus-visible,
+.heartbeat-picker button:focus-visible,
 .upcoming-row:focus-visible,
 .person-card:focus-visible,
 .modal-scrim:focus-visible {
@@ -293,7 +296,8 @@ p {
 
 .sent-card h2,
 .complete-step h2,
-.approval-modal h2 {
+.approval-modal h2,
+.reminder-modal h2 {
   margin-bottom: 0;
   font-family: var(--font-display);
   font-size: 30px;
@@ -816,6 +820,88 @@ p {
   gap: 28px;
 }
 
+.reminder-hero {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 20px;
+  padding: 18px 20px;
+  background:
+    linear-gradient(135deg, oklch(98% 0.025 151), oklch(99% 0.006 72) 58%),
+    var(--card);
+}
+
+.reminder-brand {
+  display: inline-flex;
+  align-items: center;
+  gap: 9px;
+  color: var(--ink);
+  font-family: var(--font-display);
+  font-size: 22px;
+}
+
+.message-banner {
+  position: relative;
+  display: grid;
+  gap: 5px;
+  max-width: 640px;
+  border: 1px solid oklch(83% 0.04 151);
+  border-radius: 24px 24px 24px 8px;
+  padding: 15px 18px;
+  background: oklch(96% 0.035 151);
+}
+
+.message-banner::before {
+  content: "";
+  position: absolute;
+  left: -7px;
+  bottom: 0;
+  width: 14px;
+  height: 14px;
+  border-bottom-right-radius: 14px;
+  background: oklch(96% 0.035 151);
+}
+
+.message-from {
+  color: var(--fern);
+  font-family: var(--font-mono);
+  font-size: 10px;
+  font-weight: 500;
+  letter-spacing: 0.13em;
+  text-transform: uppercase;
+}
+
+.message-banner h2 {
+  margin: 0;
+  font-family: var(--font-display);
+  font-size: 27px;
+  font-weight: 400;
+  line-height: 1;
+}
+
+.message-banner p {
+  margin: 0;
+  color: var(--ink);
+  font-size: 14px;
+}
+
+.reminder-hero-action {
+  display: grid;
+  justify-items: end;
+  gap: 7px;
+  text-align: right;
+}
+
+.reminder-hero-action .pill-button.primary {
+  background: var(--fern);
+  box-shadow: 0 12px 26px oklch(45% 0.07 151 / 0.16);
+}
+
+.reminder-hero-action small {
+  color: var(--muted);
+  font-size: 12px;
+}
+
 .source-status {
   display: flex;
   align-items: center;
@@ -1313,14 +1399,14 @@ p {
   margin-bottom: 0;
 }
 
-.approved-reminder {
+.approved-status {
   display: grid;
   justify-items: end;
   gap: 6px;
   text-align: right;
 }
 
-.approved-reminder span {
+.approved-status span {
   border-radius: 999px;
   padding: 8px 12px;
   background: oklch(92% 0.04 151);
@@ -1328,7 +1414,7 @@ p {
   font-weight: 700;
 }
 
-.approved-reminder small {
+.approved-status small {
   color: var(--muted);
 }
 
@@ -1376,7 +1462,8 @@ p {
 }
 
 .source-sheet,
-.approval-modal {
+.approval-modal,
+.reminder-modal {
   position: relative;
   z-index: 1;
   width: min(420px, 100%);
@@ -1444,25 +1531,26 @@ p {
   font-weight: 700;
 }
 
-.reminder-picker {
+.heartbeat-picker {
   display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
+  grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 8px;
 }
 
-.reminder-picker button {
-  min-height: 36px;
-  border: 0;
-  border-radius: 12px;
+.heartbeat-picker button {
+  min-height: 42px;
+  border: 1px solid var(--line);
+  border-radius: 14px;
   background: var(--background);
   color: var(--muted);
   font-size: 12.5px;
   font-weight: 700;
 }
 
-.reminder-picker button.active {
-  background: var(--clay);
-  color: oklch(99% 0.006 72);
+.heartbeat-picker button.active {
+  border-color: oklch(78% 0.052 151);
+  background: oklch(92% 0.04 151);
+  color: var(--fern);
 }
 
 .confirmed-state {
@@ -1595,6 +1683,15 @@ p {
     grid-template-columns: 1fr;
   }
 
+  .reminder-hero {
+    grid-template-columns: 1fr;
+  }
+
+  .reminder-hero-action {
+    justify-items: start;
+    text-align: left;
+  }
+
   .alternative-grid,
   .summary-grid,
   .brief-facts {
@@ -1632,7 +1729,7 @@ p {
     flex-direction: column;
   }
 
-  .approved-reminder {
+  .approved-status {
     justify-items: start;
     text-align: left;
   }
@@ -1650,6 +1747,7 @@ p {
 
   .entry-card,
   .import-card,
+  .reminder-hero,
   .gift-brief,
   .recommendation-hero,
   .people-page,
@@ -1677,8 +1775,8 @@ p {
     font-size: 11px;
   }
 
-  .reminder-picker {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
+  .heartbeat-picker {
+    grid-template-columns: 1fr;
   }
 
   .modal-layer {

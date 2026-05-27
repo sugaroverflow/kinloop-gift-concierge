@@ -8,15 +8,15 @@ Kinloop is a source-driven gift concierge. The user-facing app stays focused on 
 
 The app proves a tight commerce-adjacent product loop:
 
-1. A user signs in with Supabase email/password auth or explicitly continues on the current device for demo resilience.
+1. A user signs in with Supabase email/password auth.
 2. The user runs synthetic data input from the checked-in source fixture.
 3. Kinloop normalizes people, dates, interests, avoid lists, budgets, and source summaries from the synthetic email fixture.
 4. The dashboard opens on the next birthday and presents a read-only gift brief.
 5. Kinloop searches Shopify UCP Catalog MCP for product candidates when live product discovery is enabled.
 6. Codex filters those candidates against the source clues, avoid list, budget, and birthday context.
 7. Codex turns the curated relationship context and product candidates into structured gift ideas.
-8. The user approves one idea and chooses reminder timing.
-9. Supabase records imported source summaries, approvals, and reminder timing when configured; browser state keeps the local flow reliable.
+8. The user either approves one idea or sets reminder heartbeat timing from the dashboard.
+9. Supabase records imported source summaries and approvals when configured; browser state keeps the local flow reliable.
 10. Optional reminder preferences can be handed to the OpenClaw channel service when credentials and allowlists are verified.
 
 ## System Flow
@@ -31,9 +31,8 @@ The app proves a tight commerce-adjacent product loop:
   -> Codex candidate curation
   -> Codex structured transformation
   -> gift ideas
-  -> user approval
+  -> user approval or reminder preference
   -> Supabase product memory or browser fallback
-  -> reminder preference
   -> OpenClaw preview or allowlisted reminder message boundary
 ```
 
@@ -89,7 +88,7 @@ Shopify UCP Catalog MCP is the product candidate source when configured through 
 
 OpenClaw is a channel service for reminders, routing, and CLI operations. It is not the recommender, approval owner, payment layer, or memory layer.
 
-Approval can call `/api/openclaw/reminder` in preview mode to produce the channel payload without sending externally. Real or CLI sends require explicit credentials, consent, and allowlisted targets.
+The dashboard reminder splash opens a timing modal and records the selected heartbeat timing rather than sending immediately. When a heartbeat determines the deadline is near, the OpenClaw channel service can produce or send the Discord payload behind explicit credentials, consent, and allowlisted targets.
 
 ## Gift Source Route
 
@@ -109,7 +108,7 @@ Implementation work should preserve checks for:
 
 - app build and tests
 - UI copy avoiding internal labels in the product surface
-- browser smoke through source import, gift reveal, approval, and reminder opt-in
+- browser smoke through source import, gift reveal, approval, and dashboard reminder opt-in
 - source intake fail-closed behavior for synthetic and optional live checks
 - Supabase auth/read/write checks
 - Codex SDK output shape and local resilience shape

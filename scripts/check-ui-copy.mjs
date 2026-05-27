@@ -35,16 +35,19 @@ const bannedShopperPhrases = [
 const requiredAppCopy = [
   "Kinloop",
   "Sign in",
-  "Continue on this device",
   "Bring in your people",
   "Synthetic data input",
   "You're all set",
   "Go to dashboard",
   "Upcoming",
+  "Need a reminder?",
+  "Set reminder",
+  "Later today",
+  "3 days",
+  "7 days",
   "Find",
   "Why this fits",
   "Approve this gift",
-  "d before",
   "Privacy and controls"
 ];
 

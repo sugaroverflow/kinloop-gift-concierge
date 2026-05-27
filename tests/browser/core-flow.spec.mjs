@@ -7,9 +7,9 @@ test.beforeAll(async () => {
   await mkdir(screenshotDir, { recursive: true });
 });
 
-test("Kinloop follows sign-in, source import, dashboard, approval, and reminder flow", async ({ page }) => {
+test("Kinloop supports separate gift approval and deadline heartbeat flows", async ({ page }) => {
   let giftSourceRequest = null;
-  let reminderCalled = false;
+  let reminderCallCount = 0;
 
   await page.route("**/api/gift-source", async (route) => {
     giftSourceRequest = JSON.parse(route.request().postData() || "{}");
@@ -61,8 +61,20 @@ test("Kinloop follows sign-in, source import, dashboard, approval, and reminder 
     });
   });
 
+  await page.route("**/api/openclaw/status", async (route) => {
+    await route.fulfill({
+      status: 200,
+      contentType: "application/json",
+      body: JSON.stringify({
+        ok: true,
+        ready: true,
+        summary: "Reminder channel ready."
+      })
+    });
+  });
+
   await page.route("**/api/openclaw/reminder", async (route) => {
-    reminderCalled = true;
+    reminderCallCount += 1;
     await route.fulfill({
       status: 200,
       contentType: "application/json",
@@ -71,7 +83,7 @@ test("Kinloop follows sign-in, source import, dashboard, approval, and reminder 
         mode: "preview",
         target: "kinloop-recipient",
         productSource: "mock_retailer_feed",
-        message: { mode: "preview", payload: { recipientName: "Elara" } }
+        message: { mode: "preview", sent: true, payload: { recipientName: "Elara" } }
       })
     });
   });
@@ -80,9 +92,10 @@ test("Kinloop follows sign-in, source import, dashboard, approval, and reminder 
   await page.evaluate(() => window.localStorage.clear());
 
   await expect(page.getByRole("heading", { name: "Sign in" })).toBeVisible();
+  await expect(page.getByRole("button", { name: "Continue on this device" })).toHaveCount(0);
   await page.screenshot({ path: `${screenshotDir}/sign-in.png`, fullPage: true });
 
-  await page.getByRole("button", { name: "Continue on this device" }).click();
+  await page.goto("/import");
   await expect(page.getByRole("heading", { name: "Bring in your people" })).toBeVisible();
   await expect(page.getByRole("heading", { name: "Gmail" })).toBeVisible();
   await expect(page.getByRole("heading", { name: "Obsidian" })).toBeVisible();
@@ -101,6 +114,16 @@ test("Kinloop follows sign-in, source import, dashboard, approval, and reminder 
   await page.screenshot({ path: `${screenshotDir}/import-ready.png`, fullPage: true });
 
   await page.getByRole("button", { name: "Go to dashboard" }).click();
+  await expect(page.getByRole("heading", { name: "Need a reminder?" })).toBeVisible();
+  await expect(page.getByText("Don't have time to review gifts today?")).toBeVisible();
+  await page.getByRole("button", { name: "Set reminder" }).click();
+  const reminderDialog = page.getByRole("dialog", { name: "When should Kinloop remind you?" });
+  await expect(reminderDialog.getByRole("button", { name: "Later today" })).toBeVisible();
+  await reminderDialog.getByRole("button", { name: "Later today" }).click();
+  await reminderDialog.getByRole("button", { name: "Set reminder" }).click();
+  await expect(page.getByText("Discord ping sent.", { exact: true }).first()).toBeVisible();
+  expect(reminderCallCount).toBe(1);
+
   await expect(page.getByRole("heading", { name: "Elara Moonwell" })).toBeVisible();
   await expect(page.getByText(/pottery|espresso|hosting/i).first()).toBeVisible();
 
@@ -114,14 +137,14 @@ test("Kinloop follows sign-in, source import, dashboard, approval, and reminder 
   await page.getByRole("button", { name: "Approve this gift" }).click();
   const approvalDialog = page.getByRole("dialog", { name: "Pottery Studio Voucher" });
   await expect(approvalDialog.getByRole("heading", { name: "Pottery Studio Voucher" })).toBeVisible();
-  await approvalDialog.getByRole("button", { name: "3d before" }).click();
   await approvalDialog.getByRole("button", { name: "Approve gift" }).click();
   await expect(page.getByText("Pottery Studio Voucher approved.")).toBeVisible();
-  expect(reminderCalled).toBe(true);
+  expect(reminderCallCount).toBe(1);
 
   await page.getByRole("navigation", { name: "Kinloop" }).getByRole("button", { name: "Approved" }).click();
   await expect(page.getByRole("heading", { name: "Gift decisions" })).toBeVisible();
-  await expect(page.getByText("Text 3 days before")).toBeVisible();
+  await expect(page.getByText("Approval saved")).toBeVisible();
+  await expect(page.getByText("Text 3 days before")).toHaveCount(0);
   await expect(page.getByText("No purchase or payment happens in Kinloop.", { exact: true })).toBeVisible();
   await page.screenshot({ path: `${screenshotDir}/approved.png`, fullPage: true });
 });
