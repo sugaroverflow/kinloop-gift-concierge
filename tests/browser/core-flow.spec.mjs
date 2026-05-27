@@ -121,7 +121,7 @@ test("Kinloop supports separate gift approval and deadline heartbeat flows", asy
   await expect(reminderDialog.getByRole("button", { name: "Later today" })).toBeVisible();
   await reminderDialog.getByRole("button", { name: "Later today" }).click();
   await reminderDialog.getByRole("button", { name: "Set reminder" }).click();
-  await expect(page.getByText("Discord ping sent.", { exact: true }).first()).toBeVisible();
+  await expect(page.getByText("Reminder set: Later today.", { exact: true }).first()).toBeVisible();
   expect(reminderCallCount).toBe(1);
 
   await expect(page.getByRole("heading", { name: "Elara Moonwell" })).toBeVisible();
@@ -145,6 +145,6 @@ test("Kinloop supports separate gift approval and deadline heartbeat flows", asy
   await expect(page.getByRole("heading", { name: "Gift decisions" })).toBeVisible();
   await expect(page.getByText("Approval saved")).toBeVisible();
   await expect(page.getByText("Text 3 days before")).toHaveCount(0);
-  await expect(page.getByText("No purchase or payment happens in Kinloop.", { exact: true })).toBeVisible();
+  await expect(page.getByText("Approved gift ready for purchase queue (pending)", { exact: true })).toBeVisible();
   await page.screenshot({ path: `${screenshotDir}/approved.png`, fullPage: true });
 });

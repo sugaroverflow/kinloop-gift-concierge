@@ -498,7 +498,7 @@ export default function KinloopApp({ initialView = "dashboard" }) {
 
       <footer className="kinloop-footer">
         <span>Privacy and controls</span>
-        <span>Approval only. No purchase or payment happens in Kinloop.</span>
+        <span>Approval only. Approved gift ready for purchase queue (pending)</span>
       </footer>
 
       <ApprovalModal
@@ -839,9 +839,9 @@ function ReminderHero({ reminderChannel, reminderHeartbeat, sendingReminder, onO
   const hasError = Boolean(reminderHeartbeat?.error);
   const status = hasError
     ? "Discord setup needs attention."
-    : reminderHeartbeat?.sent || reminderHeartbeat?.state === "sent"
-      ? "Discord ping sent."
-      : reminderHeartbeat?.state === "requested"
+    : reminderHeartbeat?.sent ||
+        reminderHeartbeat?.state === "sent" ||
+        reminderHeartbeat?.state === "requested"
       ? `Reminder set: ${reminderHeartbeat.timing}.`
       : reminderHeartbeat
         ? "Reminder saved."
@@ -1093,7 +1093,7 @@ function ApprovedView({ approval, onNavigateDashboard }) {
           </div>
           <div className="approved-status">
             <span>Approval saved</span>
-            <small>No purchase or payment happens in Kinloop.</small>
+            <small>Approved gift ready for purchase queue (pending)</small>
           </div>
         </article>
       ) : (
